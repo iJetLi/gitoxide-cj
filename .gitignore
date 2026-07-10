@@ -1,0 +1,4 @@
+spec/gix-cangjie-native-git/
+target/
+.cache/
+spec/
