@@ -61,7 +61,7 @@ public class FileStore {
     public func iter(): ArrayList<Reference> {
         var result = ArrayList<Reference>()
         let refsDir = gitDir + "/refs"
-        collectRefs(refsDir, "", result)
+        collectRefs(refsDir, "refs", result)
         result
     }
 
@@ -96,6 +96,33 @@ public class FileStore {
         if (!exists(dir)) {
             return
         }
+        let entries = listDirectory(dir)
+        for (name in entries) {
+            let fullPath = dir + "/" + name
+            let refName = if (prefix.isEmpty()) {
+                name
+            } else {
+                prefix + "/" + name
+            }
+            if (isDir(fullPath)) {
+                collectRefs(fullPath, refName, result)
+            } else {
+                let refOpt = find(FullName(refName))
+                if (let Some(r) <- refOpt) {
+                    result.add(r)
+                }
+            }
+        }
+    }
+}
+
+// 判断路径是否为目录
+func isDir(path: String): Bool {
+    try {
+        let entries = Directory.readFrom(path)
+        true
+    } catch (_: Exception) {
+        false
     }
 }
 
