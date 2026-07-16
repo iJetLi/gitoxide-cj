@@ -161,7 +161,7 @@ extend ObjectId <: Hashable {
 
 // 将十六进制字符（0-9, A-F, a-f）转换为对应的数值
 // 参数 c：十六进制字符的 ASCII 编码
-// 返回值：0-15 的数值，非法字符返回 0
+// 返回值：0-15 的数值，非法字符返回 -1
 func hexDigitValue(c: UInt8): Int64 {
     if (c >= UInt8(48) && c <= UInt8(57)) {
         Int64(c - UInt8(48))
@@ -170,7 +170,7 @@ func hexDigitValue(c: UInt8): Int64 {
     } else if (c >= UInt8(97) && c <= UInt8(102)) {
         Int64(c - UInt8(87))
     } else {
-        0
+        -1
     }
 }
 

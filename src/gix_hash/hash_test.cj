@@ -155,11 +155,10 @@ func testObjectIdFromHexValidUppercase(): Unit {
 @Test
 func testObjectIdFromHexInvalidNonHex(): Unit {
     // 对齐 Rust: ObjectId::from_hex(b"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz") → Error::Invalid
-    // 仓颉当前实现中非法字符被当作 0 处理，验证不会崩溃
     let hex = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-    let id = ObjectId.fromHexOrThrow(hex)
-    if (id.bytes.size != 20) {
-        throw Exception("invalid hex should still produce 20 bytes")
+    let idOpt = ObjectId.fromHex(hex)
+    if (idOpt.isSome()) {
+        throw Exception("invalid hex chars should return None")
     }
 }
 
