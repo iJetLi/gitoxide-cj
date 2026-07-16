@@ -381,7 +381,7 @@ func testTreeRefFromBytesEmpty(): Unit {
 @Test
 func testTreeWriteAndParse(): Unit {
     // 对齐 Rust: tree round_trip — write → parse 一致性
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = Entry(EntryMode(0o100644), "hello.txt", oid)
     let entries = ArrayList<Entry>()
     entries.add(entry)
@@ -406,7 +406,7 @@ func testTreeWriteAndParse(): Unit {
 @Test
 func testTreeRefIterCollect(): Unit {
     // 对齐 Rust: TreeRefIter 收集所有条目
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = Entry(EntryMode(0o100644), "file.txt", oid)
     let entries = ArrayList<Entry>()
     entries.add(entry)
@@ -432,8 +432,8 @@ func testTreeRefIterEmpty(): Unit {
 @Test
 func testTreeMultipleEntries(): Unit {
     // 对齐 Rust: tree everything — 多种类型的条目
-    let oid1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let oid2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
+    let oid1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
 
     let entries = ArrayList<Entry>()
     entries.add(Entry(EntryMode(0o100755), "exe", oid1))
@@ -473,7 +473,7 @@ func testTreeMultipleEntries(): Unit {
 @Test
 func testTreeRefIterErrorHandling(): Unit {
     // 对齐 Rust: tree::iter::error_handling — 截断数据应返回 None
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entries = ArrayList<Entry>()
     entries.add(Entry(EntryMode(0o100644), "file.txt", oid))
     let tree = Tree(entries)
@@ -499,7 +499,7 @@ func testTreeWriteToArrayEmpty(): Unit {
 @Test
 func testTreeRoundTripOwned(): Unit {
     // 对齐 Rust: TreeRef → Tree → writeToArray → TreeRef round-trip
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entries = ArrayList<Entry>()
     entries.add(Entry(EntryMode(0o100644), "a.txt", oid))
     entries.add(Entry(EntryMode(0o40000), "dir", oid))
@@ -608,7 +608,7 @@ func testCommitRefTreeId(): Unit {
 @Test
 func testCommitWriteToArray(): Unit {
     // 对齐 Rust: commit round-trip write
-    let treeId = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let treeId = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     let author = Signature("Sebastian Thiel", "sebastian.thiel@icloud.com", Time(1592437401, 28800, Sign.Plus))
     let committer = Signature("Sebastian Thiel", "sebastian.thiel@icloud.com", Time(1592437401, 28800, Sign.Plus))
     let parents = ArrayList<ObjectId>()
@@ -745,7 +745,7 @@ func testTagRefPgpBeginNotAtLineStart(): Unit {
 @Test
 func testTagWriteToArray(): Unit {
     // 对齐 Rust: tag round-trip write
-    let targetId = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let targetId = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     let tagger = Signature("Bot", "bot@example.com", Time(1710007200, 19800, Sign.Plus))
     let tag = Tag(targetId, ObjectKind.Commit, "v2.0.0", Some(tagger), "Release v2.0.0", None)
     let bytes = tag.writeToArray()
@@ -902,7 +902,7 @@ func testNeverFind(): Unit {
     // 对齐 Rust: never_writes_to_nowhere_and_finds_nothing
     let nf = NeverFind()
     let buf: Array<Byte> = []
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (nf.tryFind(id, buf).isSome()) {
         throw Exception("NeverFind.tryFind should return None")
     }
@@ -964,7 +964,7 @@ func testDataDecode(): Unit {
 @Test
 func testDataTryIntoTreeIter(): Unit {
     // 对齐 Rust: Data::try_into_tree_iter
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entries = ArrayList<Entry>()
     entries.add(Entry(EntryMode(0o100644), "file.txt", oid))
     let tree = Tree(entries)
@@ -1318,7 +1318,7 @@ func testCommitMessageWithTrailer(): Unit {
 @Test
 func testCommitWriteWithEncoding(): Unit {
     // 对齐 Rust: commit::write::round_trip_with_encoding — 带编码的序列化
-    let treeId = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let treeId = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     let author = Signature("Sebastian Thiel", "sebastian.thiel@icloud.com", Time(1592437401, 28800, Sign.Plus))
     let committer = Signature("Sebastian Thiel", "sebastian.thiel@icloud.com", Time(1592437401, 28800, Sign.Plus))
     let parents = ArrayList<ObjectId>()
@@ -1344,7 +1344,7 @@ func testCommitWriteWithEncoding(): Unit {
 @Test
 func testCommitWriteWithExtraHeaders(): Unit {
     // 对齐 Rust: commit::write::round_trip_with_extra_headers — 带额外头部的序列化
-    let treeId = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let treeId = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     let author = Signature("Test", "test@test.com", Time(1710007200, 0, Sign.Plus))
     let committer = Signature("Test", "test@test.com", Time(1710007200, 0, Sign.Plus))
     let parents = ArrayList<ObjectId>()
@@ -1365,9 +1365,9 @@ func testCommitWriteWithExtraHeaders(): Unit {
 @Test
 func testCommitWriteMergeCommit(): Unit {
     // 对齐 Rust: commit::write::round_trip_merge — 合并提交的序列化
-    let treeId = ObjectId.fromHex("0cf16ce8e229b59a761198975f0c0263229faf82")
-    let parentId1 = ObjectId.fromHex("6a6054db4ce3c1e4e6a37f8c4d7acb63a4d6ad71")
-    let parentId2 = ObjectId.fromHex("c91d592913d47ac4e4a76daf16fd649b276e211e")
+    let treeId = ObjectId.fromHexOrThrow("0cf16ce8e229b59a761198975f0c0263229faf82")
+    let parentId1 = ObjectId.fromHexOrThrow("6a6054db4ce3c1e4e6a37f8c4d7acb63a4d6ad71")
+    let parentId2 = ObjectId.fromHexOrThrow("c91d592913d47ac4e4a76daf16fd649b276e211e")
     let author = Signature("Test", "test@test.com", Time(1592454703, 28800, Sign.Plus))
     let committer = Signature("Test", "test@test.com", Time(1592454738, 28800, Sign.Plus))
     let parents = ArrayList<ObjectId>()
@@ -1512,7 +1512,7 @@ func testTagRefFromBytesWhitespace(): Unit {
 @Test
 func testTagWriteWithPgpSignature(): Unit {
     // 对齐 Rust: tag::write::round_trip_with_signature — 带 PGP 签名的标签序列化
-    let targetId = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let targetId = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     let tagger = Signature("Bot", "bot@example.com", Time(1710007200, 19800, Sign.Plus))
     let pgpSig = "-----BEGIN PGP SIGNATURE-----\nsignature data\n-----END PGP SIGNATURE-----"
     let tag = Tag(targetId, ObjectKind.Commit, "v2.0.0", Some(tagger), "Release v2.0.0", Some(pgpSig))
@@ -1537,7 +1537,7 @@ func testTagWriteWithPgpSignature(): Unit {
 @Test
 func testTreeWriteDoesNotValidate(): Unit {
     // 对齐 Rust: tree::encode::write_to_does_not_validate — 空文件名的条目
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entries = ArrayList<Entry>()
     entries.add(Entry(EntryMode(0o100644), "", oid))
     let tree = Tree(entries)
@@ -1561,8 +1561,8 @@ func testTreeEntryModeFromBytesInvalid(): Unit {
 @Test
 func testTreeRefFromBytesMultipleEntriesSorted(): Unit {
     // 对齐 Rust: tree::from_bytes::sorted_entries — 条目按名称排序
-    let oid1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let oid2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
+    let oid1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
     let entries = ArrayList<Entry>()
     entries.add(Entry(EntryMode(0o100644), "zebra.txt", oid1))
     entries.add(Entry(EntryMode(0o100644), "apple.txt", oid2))
@@ -1581,8 +1581,8 @@ func testTreeRefFromBytesMultipleEntriesSorted(): Unit {
 @Test
 func testTreeRefFromBytesWithSubtree(): Unit {
     // 对齐 Rust: tree::from_bytes::with_subtree — 带子目录的树
-    let oid1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let oid2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
+    let oid1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
     let entries = ArrayList<Entry>()
     entries.add(Entry(EntryMode(0o100644), "file.txt", oid1))
     entries.add(Entry(EntryMode(0o040000), "subdir", oid2))
@@ -1829,7 +1829,7 @@ func testCommitRefFromBytesMergetag(): Unit {
 @Test
 func testTagWriteOnlyDash(): Unit {
     // 对齐 Rust: tag::write::only_dash — 标签名仅含横线
-    let targetId = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let targetId = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     let tag = Tag(targetId, ObjectKind.Commit, "-", None, "msg", None)
     let bytes = tag.writeToArray()
     let parsed = TagRef.fromBytes(bytes, HashKind.Sha1)
@@ -1844,7 +1844,7 @@ func testTagWriteOnlyDash(): Unit {
 @Test
 func testTagWriteLeadingDash(): Unit {
     // 对齐 Rust: tag::write::leading_dash — 标签名以横线开头
-    let targetId = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let targetId = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     let tag = Tag(targetId, ObjectKind.Commit, "-v1.0", None, "msg", None)
     let bytes = tag.writeToArray()
     let parsed = TagRef.fromBytes(bytes, HashKind.Sha1)
@@ -1859,7 +1859,7 @@ func testTagWriteLeadingDash(): Unit {
 @Test
 func testTagWriteVersion(): Unit {
     // 对齐 Rust: tag::write::version — 带版本号的标签
-    let targetId = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let targetId = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     let tagger = Signature("Bot", "bot@example.com", Time(1710007200, 0, Sign.Plus))
     let tag = Tag(targetId, ObjectKind.Commit, "v1.0.0", Some(tagger), "Release\n", None)
     let bytes = tag.writeToArray()
@@ -1909,9 +1909,9 @@ func testTreeRefFromBytesMultipleEntriesSortedSupplement(): Unit {
     // 对齐 Rust: tree with multiple entries in sorted order
     // 使用 Tree.writeToArray 构造正确的二进制数据
     let tree = Tree.empty()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
-    let id3 = ObjectId.fromHex("9556057aee5abb06912922e9f26c46386a816822")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let id3 = ObjectId.fromHexOrThrow("9556057aee5abb06912922e9f26c46386a816822")
     tree.entries.add(Entry(EntryMode.Regular(), ".gitignore", id1))
     tree.entries.add(Entry(EntryMode.Directory(), "LICENSE", id2))
     tree.entries.add(Entry(EntryMode.Regular(), "README.md", id3))
@@ -2346,9 +2346,9 @@ func testTreeRefFromBytesFuzzed(): Unit {
 func testTreeEntrySortOrderIsCorrect(): Unit {
     // 对齐 Rust: tree::entries::sort_order_is_correct — 树条目排序
     let tree = Tree.empty()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
-    let id3 = ObjectId.fromHex("9556057aee5abb06912922e9f26c46386a816822")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let id3 = ObjectId.fromHexOrThrow("9556057aee5abb06912922e9f26c46386a816822")
     tree.entries.add(Entry(EntryMode.Regular(), "z-last", id1))
     tree.entries.add(Entry(EntryMode.Directory(), "a-first", id2))
     tree.entries.add(Entry(EntryMode.Regular(), "m-middle", id3))
@@ -2367,7 +2367,7 @@ func testTreeEntrySortOrderIsCorrect(): Unit {
 func testTreeRefIterLeadingSpaceInName(): Unit {
     // 对齐 Rust: tree::iter::leading_space_in_tree_name — 文件名前导空格
     let tree = Tree.empty()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tree.entries.add(Entry(EntryMode.Regular(), " leading-space", id))
     let bytes = tree.writeToArray()
     let iter = TreeRefIter(bytes, HashKind.Sha1)
@@ -2409,8 +2409,8 @@ func testEntryModeNonStandardModes(): Unit {
 func testTreeWriteToArrayRoundTrip(): Unit {
     // 对齐 Rust: tree::round_trip — 完整往返验证
     let tree = Tree.empty()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     tree.entries.add(Entry(EntryMode.Regular(), "file.txt", id1))
     tree.entries.add(Entry(EntryMode.Directory(), "subdir", id2))
     let bytes = tree.writeToArray()
@@ -2610,8 +2610,8 @@ func testTagRefFromBytesWithAllFields(): Unit {
 func testTreeRefIterErrorHandling2(): Unit {
     // 对齐 Rust: gix-object/src/tree.rs::Tree::iter — 多条目遍历
     let tree = Tree.empty()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     tree.entries.add(Entry(EntryMode.Regular(), "file.txt", id1))
     tree.entries.add(Entry(EntryMode.Directory(), "subdir", id2))
     let bytes = tree.writeToArray()
@@ -2629,8 +2629,8 @@ func testTreeRefIterErrorHandling2(): Unit {
 func testTreeRefIterOffsetToNextEntry(): Unit {
     // 对齐 Rust: tree::iter::offset_to_next_entry — 偏移量
     let tree = Tree.empty()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     tree.entries.add(Entry(EntryMode.Regular(), "a", id1))
     tree.entries.add(Entry(EntryMode.Directory(), "b", id2))
     let bytes = tree.writeToArray()

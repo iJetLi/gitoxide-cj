@@ -47,7 +47,7 @@ public func parseFetchHead(data: String): ArrayList<FetchHeadEntry> {
         if (parts.size < 2) {
             continue
         }
-        let id = ObjectId.fromHex(trimStr(parts[0]))
+        let id = ObjectId.fromHexOrThrow(trimStr(parts[0]))
         let isMerge = !trimStr(parts[1]).contains("not-for-merge")
         var refName: ?String = None
         var remoteUrl: ?String = None

@@ -1,7 +1,8 @@
 // 文件：lib.cj
 // 用途：Git 工作树管理，提供检出树对象与工作区状态查询
 // 所属包：gix.gix_worktree
-// 关键类型：Worktree, StatusEntry, WorktreeStatus
+// 关键类型：Worktree, StatusEntry, WorktreeStatus, StackState, StackStatistics
+// 对齐来源：gix-worktree/src/lib.rs, gix-worktree/src/stack/mod.rs, gix-worktree/src/stack/state/mod.rs
 
 package gitoxide.gix_worktree
 
@@ -10,6 +11,10 @@ import gitoxide.gix_object.*
 import gitoxide.gix_utils.*
 import std.fs.*
 import std.collection.*
+
+// ============================================================
+// Worktree - 对齐 gix-worktree/src/lib.rs
+// ============================================================
 
 // 工作树，表示 Git 仓库的一个工作目录及其对应的 .git 目录
 public class Worktree {
@@ -63,6 +68,10 @@ public class Worktree {
     }
 }
 
+// ============================================================
+// StatusEntry - 工作树状态条目
+// ============================================================
+
 // 工作树状态条目，记录一个文件的路径及其状态
 public class StatusEntry {
     // 文件相对路径
@@ -77,6 +86,10 @@ public class StatusEntry {
         this.status = status
     }
 }
+
+// ============================================================
+// WorktreeStatus - 工作树文件状态枚举
+// ============================================================
 
 // 工作树文件状态枚举
 public enum WorktreeStatus {
@@ -118,10 +131,79 @@ extend WorktreeStatus <: Equatable<WorktreeStatus> {
     }
 }
 
+// ============================================================
+// StackState - 对齐 gix-worktree/src/stack/state/mod.rs
+// ============================================================
+
+// 堆栈状态，用于检出和添加文件时的目录缓存
+// 对齐 Rust: stack::State
+public enum StackState {
+    // 用于检出，需要创建目录并访问属性
+    | CreateDirectoryAndAttributesStack
+    // 用于添加文件，需要访问属性和忽略信息
+    | AttributesAndIgnoreStack
+    // 仅用于创建目录
+    | CreateDirectoryStack
+}
+
+// ============================================================
+// StackStatistics - 对齐 gix-worktree/src/stack/mod.rs Statistics
+// ============================================================
+
+// 堆栈统计信息
+// 对齐 Rust: stack::Statistics
+public class StackStatistics {
+    // 创建的平台数
+    public var platforms: Int64
+    // 忽略堆栈统计
+    public var ignoreStatistics: IgnoreStackStatistics
+
+    public init() {
+        this.platforms = 0
+        this.ignoreStatistics = IgnoreStackStatistics()
+    }
+}
+
+// 忽略堆栈统计
+// 对齐 Rust: stack::state::ignore::Statistics
+public class IgnoreStackStatistics {
+    // 加载的忽略文件数
+    public var ignoreFilesLoaded: Int64
+    // 匹配的模式数
+    public var patternsMatched: Int64
+
+    public init() {
+        this.ignoreFilesLoaded = 0
+        this.patternsMatched = 0
+    }
+}
+
+// ============================================================
+// PathIdMapping - 对齐 gix-worktree/src/lib.rs PathIdMapping
+// ============================================================
+
+// 路径 ID 映射，用于将路径与内部 ID 关联
+// 对齐 Rust: PathIdMapping
+public class PathIdMapping {
+    // 相对路径
+    public var path: String
+    // 内部 ID
+    public var id: Int64
+
+    public init(path: String, id: Int64) {
+        this.path = path
+        this.id = id
+    }
+}
+
+// ============================================================
+// 辅助函数
+// ============================================================
+
 // 获取路径的父目录部分
 // 参数 path: 文件路径
 // 返回值: 父目录路径，若无 '/' 则返回原路径
-func parentDirWt(path: String): String {
+public func parentDirWt(path: String): String {
     let idx = path.lastIndexOf('/')
     if (let Some(i) <- idx) {
         substringStr(path, 0, i)

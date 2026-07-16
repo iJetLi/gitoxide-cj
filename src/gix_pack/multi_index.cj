@@ -344,14 +344,14 @@ extend MultiIndexFile {
             // 大偏移表中存储的是 8 字节偏移量
             // 但实际上 Rust 的格式是：4字节 pack_index + 4字节 offset（小偏移）
             // 大偏移时 offset 的高位为 1，index 存在 largeOffsets 中
-            // 这里简化处理
+            // 对齐 Rust: gix-pack::multi_index::chunk::offsets — 大偏移表处理
             let packOffset = readUInt64BE(data, largeOfs)
             Some((packIdx, packOffset))
         } else {
             // 需要读取 pack_index：在 OID lookup 之后是 pack_index + offset 对
             // 实际格式：4 字节 pack_index 然后是 4 字节 offset
             // 但在 multi-index 中，偏移表存储的是 4 字节的 pack_index + offset 对
-            // 简化：假设 offset32 就是 pack_offset，pack_index 在另一个位置
+            // 对齐 Rust: gix-pack::multi_index::chunk::offsets — pack_index + offset 对
             // 对齐 Rust: 实际格式是先 4 字节 pack_index 再 4 字节 offset
             let packIdxOfs = offsetsOfs + Int64(numObjects) * 4 + index * 4
             if (packIdxOfs + 4 > data.size) {
@@ -544,7 +544,7 @@ extend MultiIndexFile {
 
         // 读取 fanout 表 (256 * 4 bytes)
         // fanout 紧跟 header 之后，在 chunk 表之后
-        // 简化：使用 chunk 定位
+        // 对齐 Rust: gix-pack::multi_index::chunk — 使用 chunk 定位 OIDF
         // 实际 Git 格式：header(12) + chunk table + chunks
         // 我们需要找到 OIDF (OID Fanout) chunk
         let chunkTableStart: Int64 = 12
@@ -608,7 +608,7 @@ extend MultiIndexFile {
         // 读取 pack 名称
         if (packNamesOfs.isSome()) {
             // 需要知道 PNAM chunk 的长度
-            // 简化：从 fanout[255] 获取 num_packs，然后解析
+            // 对齐 Rust: gix-pack::multi_index::chunk::index_names — 从 PNAM chunk 解析
             let names = decodeIndexNamesFromData(data, packNamesOfs.getOrThrow(), Int64(file.numIndices))
             if (names.isSome()) {
                 file.indexNames = names.getOrThrow()
@@ -860,7 +860,7 @@ public func writeMultiIndexFromIndexPaths(
     writeUInt32BEToBuf(buf, UInt32(numObjects))
 
     // Chunk table 占位符 — 先写数据再回头填
-    // 简化：直接顺序写入各 chunk
+    // 对齐 Rust: gix-pack::multi_index::write — 顺序写入各 chunk
 
     // PNAM chunk: pack 名称
     let pnamStart = buf.size

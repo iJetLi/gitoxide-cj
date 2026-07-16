@@ -33,7 +33,7 @@ public class Transaction {
     // 参数 name - 要删除的引用全名
     // 返回值 - 当前事务对象（支持链式调用）
     public func delete(name: FullName): Transaction {
-        edits.add(Edit(name, Target.Object(ObjectId.fromHex(repeatStr("0", 40))), EditType.Delete))
+        edits.add(Edit(name, Target.Object(ObjectId.fromHexOrThrow(repeatStr("0", 40))), EditType.Delete))
         this
     }
 

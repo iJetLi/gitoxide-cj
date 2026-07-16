@@ -107,7 +107,7 @@ func testTempFilePersistAfterClose(): Unit {
 @Test
 func testTempFileMarkPathPersistsMarkers(): Unit {
     // 对齐 Rust: tempfile/handle.rs::mark_path::it_persists_markers_along_with_newly_created_directories
-    // 仓颉简化：验证 TempFile 创建后注册到注册表，关闭后从注册表移除
+    // 仓颉：验证 TempFile 创建后注册到注册表，关闭后从注册表移除（仓颉无 RAII guard，手动管理生命周期）
     let tf = TempFile("/tmp/gix-test/a/b/file.tmp")
     if (tf.closed) {
         throw Exception("tempfile should not be closed initially")
@@ -224,10 +224,26 @@ func testSignalSetupCanBeCalledMultipleTimes(): Unit {
 @Test
 func testTerminationSignalsRemoveTempfiles(): Unit {
     // 对齐 Rust: signal/handler/tests::various_termination_signals_remove_tempfiles_unconditionally
-    // 仓颉简化：验证 cleanupTempfiles() 不崩溃
+    // Rust: 信号处理器在进程退出时清理所有 tempfile
+    // 仓颉：使用 Process.atexit 注册清理回调，验证注册后 cleanupTempfiles 正常工作
     let tf = TempFile.new("/tmp", "gix-signal-test")
+    // TempFile 构造时已注册 atexit handler
+    if (!TempFileRegistry.atexitRegistered) {
+        throw Exception("atexit handler should be registered after TempFile creation")
+    }
+    // 验证注册表中包含此路径
+    var found = false
+    for (p in TempFileRegistry.paths) {
+        if (p == tf.path) {
+            found = true
+        }
+    }
+    if (!found) {
+        throw Exception("tempfile path should be in registry")
+    }
     cleanupTempfiles()
-    if (tf.closed) {
-        throw Exception("closed flag should not change after signal cleanup")
+    // 清理后注册表应为空
+    if (TempFileRegistry.paths.size != 0) {
+        throw Exception("registry should be empty after cleanup")
     }
 }

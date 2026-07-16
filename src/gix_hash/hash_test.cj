@@ -56,7 +56,7 @@ func testHashKindFromHexLenSha1(): Unit {
     // 对齐 Rust: Kind::from_hex_len(0) == Some(Sha1), from_hex_len(40) == Some(Sha1)
     // 仓颉中通过 ObjectId.fromHex 的长度推断实现
     // 40 字符 → Sha1
-    let id40 = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let id40 = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     if (id40.kind != HashKind.Sha1) {
         throw Exception("40-char hex should be Sha1")
     }
@@ -67,7 +67,7 @@ func testHashKindFromHexLenSha1(): Unit {
 @Test
 func testHashKindFromHexLenSha256(): Unit {
     // 对齐 Rust: Kind::from_hex_len(64) == Some(Sha256)
-    let id64 = ObjectId.fromHex("0000000000000000000000000000000000000000000000000000000000000000")
+    let id64 = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000000000000000000000000000")
     if (id64.kind != HashKind.Sha256) {
         throw Exception("64-char hex should be Sha256")
     }
@@ -133,7 +133,7 @@ func testHashKindEmptyTreeSha256(): Unit {
 func testObjectIdFromHexValidLowercase(): Unit {
     // 对齐 Rust: ObjectId::from_hex(b"1234567890abcdefaaaaaaaaaaaaaaaaaaaaaaaa").is_ok()
     let hex = "1234567890abcdefaaaaaaaaaaaaaaaaaaaaaaaa"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (id.kind != HashKind.Sha1) {
         throw Exception("lowercase 40-char hex should be Sha1")
     }
@@ -146,7 +146,7 @@ func testObjectIdFromHexValidLowercase(): Unit {
 func testObjectIdFromHexValidUppercase(): Unit {
     // 对齐 Rust: ObjectId::from_hex(b"1234567890ABCDEFAAAAAAAAAAAAAAAAAAAAAAAA").is_ok()
     let hex = "1234567890ABCDEFAAAAAAAAAAAAAAAAAAAAAAAA"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (id.kind != HashKind.Sha1) {
         throw Exception("uppercase 40-char hex should be Sha1")
     }
@@ -157,7 +157,7 @@ func testObjectIdFromHexInvalidNonHex(): Unit {
     // 对齐 Rust: ObjectId::from_hex(b"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz") → Error::Invalid
     // 仓颉当前实现中非法字符被当作 0 处理，验证不会崩溃
     let hex = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (id.bytes.size != 20) {
         throw Exception("invalid hex should still produce 20 bytes")
     }
@@ -167,7 +167,7 @@ func testObjectIdFromHexInvalidNonHex(): Unit {
 func testObjectIdFromHexSha1(): Unit {
     // 对齐 Rust: ObjectId::from_hex(40-char) → Sha1
     let hex = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (id.kind != HashKind.Sha1) {
         throw Exception("40-char hex should be Sha1")
     }
@@ -180,7 +180,7 @@ func testObjectIdFromHexSha1(): Unit {
 func testObjectIdFromHexSha256(): Unit {
     // 对齐 Rust: ObjectId::from_hex(64-char) → Sha256
     let hex = "473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (id.kind != HashKind.Sha256) {
         throw Exception("64-char hex should be Sha256")
     }
@@ -193,7 +193,7 @@ func testObjectIdFromHexSha256(): Unit {
 func testObjectIdToHexString(): Unit {
     // 对齐 Rust: ObjectId::from_hex(x).to_hex() == x
     let hex = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     let result = id.toHexString()
     if (result != hex) {
         throw Exception("round-trip hex failed: expected " + hex + " got " + result)
@@ -204,7 +204,7 @@ func testObjectIdToHexString(): Unit {
 func testObjectIdToHexStringSha256(): Unit {
     // 对齐 Rust: Sha256 round-trip
     let hex = "473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     let result = id.toHexString()
     if (result != hex) {
         throw Exception("round-trip hex Sha256 failed: expected " + hex + " got " + result)
@@ -215,13 +215,13 @@ func testObjectIdToHexStringSha256(): Unit {
 func testObjectIdEquals(): Unit {
     // 对齐 Rust: 相同 hex 产生相等 ObjectId
     let hex = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-    let id1 = ObjectId.fromHex(hex)
-    let id2 = ObjectId.fromHex(hex)
+    let id1 = ObjectId.fromHexOrThrow(hex)
+    let id2 = ObjectId.fromHexOrThrow(hex)
     if (!id1.equals(id2)) {
         throw Exception("same hex should produce equal ObjectId")
     }
     let otherHex = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-    let id3 = ObjectId.fromHex(otherHex)
+    let id3 = ObjectId.fromHexOrThrow(otherHex)
     if (id1.equals(id3)) {
         throw Exception("different hex should produce unequal ObjectId")
     }
@@ -391,7 +391,7 @@ func testOidIsNull(): Unit {
     // 对齐 Rust: Kind::Sha1.null().is_null()
     // 仓颉中没有 isNull 方法，通过验证全零字节实现
     let nullHex = "0000000000000000000000000000000000000000"
-    let nullId = ObjectId.fromHex(nullHex)
+    let nullId = ObjectId.fromHexOrThrow(nullHex)
     var allZero = true
     for (b in nullId.bytes) {
         if (b != UInt8(0)) {
@@ -411,7 +411,7 @@ func testOidIsEmptyBlob(): Unit {
         throw Exception("emptyBlob should have known hex value")
     }
     // 验证非空 blob 不等于 emptyBlob
-    let nonEmpty = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let nonEmpty = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     if (emptyBlob.equals(nonEmpty)) {
         throw Exception("null ObjectId should not equal emptyBlob")
     }
@@ -424,7 +424,7 @@ func testOidIsEmptyTree(): Unit {
     if (emptyTree.toHexString() != "4b825dc642cb6eb9a060e54bf8d69288fbee4904") {
         throw Exception("emptyTree should have known hex value")
     }
-    let nonEmpty = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let nonEmpty = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     if (emptyTree.equals(nonEmpty)) {
         throw Exception("null ObjectId should not equal emptyTree")
     }
@@ -434,7 +434,7 @@ func testOidIsEmptyTree(): Unit {
 func testOidToHexWithLen(): Unit {
     // 对齐 Rust: id.to_hex_with_len(len) — 截取前 len 个十六进制字符
     let idHex = "0123456789abcdef123456789abcdef123456789"
-    let id = ObjectId.fromHex(idHex)
+    let id = ObjectId.fromHexOrThrow(idHex)
     // 仓颉中没有 toHexWithLen，手动验证前缀截取逻辑
     // len=7 → "0123456"
     let prefix7 = substringStr(id.toHexString(), 0, 7)
@@ -465,7 +465,7 @@ func testOidToHexWithLen(): Unit {
 @Test
 func testPrefixNewValid(): Unit {
     // 对齐 Rust: Prefix::new(&id, 7).unwrap()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let p = Prefix.new(id, 7)
     if (p.isNone()) {
         throw Exception("valid prefix should not be None")
@@ -479,7 +479,7 @@ func testPrefixNewValid(): Unit {
 @Test
 func testPrefixNewInvalid(): Unit {
     // 对齐 Rust: Prefix::new(&id, 100) → Err(TooLong)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let p = Prefix.new(id, 100)
     if (!p.isNone()) {
         throw Exception("invalid hexLen should return None")
@@ -491,7 +491,7 @@ func testPrefixNewTooShort(): Unit {
     // 对齐 Rust: Prefix::new(&id, 3) → Err(TooShort)
     // 仓颉当前实现中 hexLen < 0 返回 None，但 hexLen=3 不返回 None
     // 这是与 Rust 行为的差异点：Rust 要求 hexLen >= 4
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let p = Prefix.new(id, 3)
     // 仓颉当前允许 hexLen=3，验证行为
     if (p.isNone()) {
@@ -503,13 +503,13 @@ func testPrefixNewTooShort(): Unit {
 func testPrefixMatches(): Unit {
     // 对齐 Rust: prefix.cmp_oid(&id) == Equal
     let hex = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     let prefix = Prefix(id, 7)
     if (!prefix.matches(id)) {
         throw Exception("prefix should match its own ObjectId")
     }
     let otherHex = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5392"
-    let other = ObjectId.fromHex(otherHex)
+    let other = ObjectId.fromHexOrThrow(otherHex)
     if (!prefix.matches(other)) {
         throw Exception("prefix should match ObjectId with same first 7 hex chars")
     }
@@ -519,9 +519,9 @@ func testPrefixMatches(): Unit {
 func testPrefixCmpOidGreaterSha1(): Unit {
     // 对齐 Rust: prefix.cmp_oid → Greater
     // prefix 基于 b920bbb...，比较 a920bbb... → prefix > oid
-    let prefixId = ObjectId.fromHex("b920bbb055e1efb9080592a409d3975738b6efb3")
+    let prefixId = ObjectId.fromHexOrThrow("b920bbb055e1efb9080592a409d3975738b6efb3")
     let prefix = Prefix(prefixId, 7)
-    let lesserId = ObjectId.fromHex("a920bbb055e1efb9080592a409d3975738b6efb3")
+    let lesserId = ObjectId.fromHexOrThrow("a920bbb055e1efb9080592a409d3975738b6efb3")
     // matches 只返回 Bool，不做排序比较
     // 验证前缀不匹配
     if (prefix.matches(lesserId)) {
@@ -532,9 +532,9 @@ func testPrefixCmpOidGreaterSha1(): Unit {
 @Test
 func testPrefixCmpOidLessSha1(): Unit {
     // 对齐 Rust: prefix.cmp_oid → Less
-    let prefixId = ObjectId.fromHex("b920bbb055e1efb9080592a409d3975738b6efb3")
+    let prefixId = ObjectId.fromHexOrThrow("b920bbb055e1efb9080592a409d3975738b6efb3")
     let prefix = Prefix(prefixId, 7)
-    let greaterId = ObjectId.fromHex("b920bbf055e1efb9080592a409d3975738b6efb3")
+    let greaterId = ObjectId.fromHexOrThrow("b920bbf055e1efb9080592a409d3975738b6efb3")
     if (prefix.matches(greaterId)) {
         throw Exception("prefix b920bbb should NOT match b920bbf")
     }
@@ -543,12 +543,12 @@ func testPrefixCmpOidLessSha1(): Unit {
 @Test
 func testPrefixCmpOidEqualSha1(): Unit {
     // 对齐 Rust: prefix.cmp_oid → Equal
-    let id = ObjectId.fromHex("a920bbb055e1efb9080592a409d3975738b6efb3")
+    let id = ObjectId.fromHexOrThrow("a920bbb055e1efb9080592a409d3975738b6efb3")
     let prefix = Prefix(id, 6)
     if (!prefix.matches(id)) {
         throw Exception("prefix should match its own id")
     }
-    let samePrefix = ObjectId.fromHex("a920bbffffffffffffffffffffffffffffffffff")
+    let samePrefix = ObjectId.fromHexOrThrow("a920bbffffffffffffffffffffffffffffffffff")
     if (!prefix.matches(samePrefix)) {
         throw Exception("prefix a920bb should match a920bbf...")
     }
@@ -559,7 +559,7 @@ func testPrefixVariousValidInputsSha1(): Unit {
     // 对齐 Rust: new::various_valid_inputs_sha1
     // 遍历 hexLen 4..40 验证前缀构造和匹配
     let oidHex = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    let oid = ObjectId.fromHex(oidHex)
+    let oid = ObjectId.fromHexOrThrow(oidHex)
     var hexLen: Int64 = 4
     while (hexLen < 40) {
         let p = Prefix.new(oid, hexLen)
@@ -581,7 +581,7 @@ func testPrefixVariousValidInputsSha1(): Unit {
 func testPrefixTryFrom6Chars(): Unit {
     // 对齐 Rust: Prefix::try_from("abcdef")
     let oidHex = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    let expected = ObjectId.fromHex(oidHex)
+    let expected = ObjectId.fromHexOrThrow(oidHex)
     let prefix = Prefix(expected, 6)
     if (!prefix.matches(expected)) {
         throw Exception("6-char prefix should match full oid")
@@ -592,7 +592,7 @@ func testPrefixTryFrom6Chars(): Unit {
 func testPrefixTryFrom7Chars(): Unit {
     // 对齐 Rust: Prefix::try_from("abcdefa")
     let oidHex = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    let expected = ObjectId.fromHex(oidHex)
+    let expected = ObjectId.fromHexOrThrow(oidHex)
     let prefix = Prefix(expected, 7)
     if (!prefix.matches(expected)) {
         throw Exception("7-char prefix should match full oid")
@@ -603,7 +603,7 @@ func testPrefixTryFrom7Chars(): Unit {
 func testPrefixFromHexNonempty6Chars(): Unit {
     // 对齐 Rust: Prefix::from_hex_nonempty("abcdef")
     let oidHex = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    let expected = ObjectId.fromHex(oidHex)
+    let expected = ObjectId.fromHexOrThrow(oidHex)
     let prefix = Prefix(expected, 6)
     if (!prefix.matches(expected)) {
         throw Exception("from_hex_nonempty 6-char should match")
@@ -614,7 +614,7 @@ func testPrefixFromHexNonempty6Chars(): Unit {
 func testPrefixFromHexNonempty7Chars(): Unit {
     // 对齐 Rust: Prefix::from_hex_nonempty("abcdefa")
     let oidHex = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    let expected = ObjectId.fromHex(oidHex)
+    let expected = ObjectId.fromHexOrThrow(oidHex)
     let prefix = Prefix(expected, 7)
     if (!prefix.matches(expected)) {
         throw Exception("from_hex_nonempty 7-char should match")
@@ -625,7 +625,7 @@ func testPrefixFromHexNonempty7Chars(): Unit {
 func testPrefixFromHexNonempty2Chars(): Unit {
     // 对齐 Rust: Prefix::from_hex_nonempty("ab")
     let oidHex = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    let expected = ObjectId.fromHex(oidHex)
+    let expected = ObjectId.fromHexOrThrow(oidHex)
     let prefix = Prefix(expected, 2)
     if (!prefix.matches(expected)) {
         throw Exception("2-char prefix should match")
@@ -636,7 +636,7 @@ func testPrefixFromHexNonempty2Chars(): Unit {
 func testPrefixFromHexNonempty1Char(): Unit {
     // 对齐 Rust: Prefix::from_hex_nonempty("a")
     let oidHex = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    let expected = ObjectId.fromHex(oidHex)
+    let expected = ObjectId.fromHexOrThrow(oidHex)
     let prefix = Prefix(expected, 1)
     if (!prefix.matches(expected)) {
         throw Exception("1-char prefix should match")
@@ -833,7 +833,7 @@ func testHashOfBytesEmpty(): Unit {
 @Test
 func testVerifyMatch(): Unit {
     // 对齐 Rust: verify 相同 ObjectId → None
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let result = verify(id, id)
     if (!result.isNone()) {
         throw Exception("verify should return None for matching IDs")
@@ -843,8 +843,8 @@ func testVerifyMatch(): Unit {
 @Test
 func testVerifyMismatch(): Unit {
     // 对齐 Rust: verify 不同 ObjectId → Some(error)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     let result = verify(id1, id2)
     if (result.isNone()) {
         throw Exception("verify should return Some for mismatching IDs")
@@ -854,8 +854,8 @@ func testVerifyMismatch(): Unit {
 @Test
 func testVerifyLengthMismatch(): Unit {
     // 对齐 Rust: verify 不同长度的 ObjectId
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813")
     let result = verify(id1, id2)
     if (result.isNone()) {
         throw Exception("verify should return Some for length-mismatching IDs")
@@ -903,7 +903,7 @@ func testVerifyEmptyBlobNotTree(): Unit {
 func testObjectIdSha1HexRoundTrip(): Unit {
     // 对齐 Rust: ObjectId from_hex → to_hex 往返一致性
     let hex = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (id.toHexString() != hex) {
         throw Exception("Sha1 hex round-trip failed")
     }
@@ -913,7 +913,7 @@ func testObjectIdSha1HexRoundTrip(): Unit {
 func testObjectIdSha256HexRoundTrip(): Unit {
     // 对齐 Rust: ObjectId Sha256 from_hex → to_hex 往返一致性
     let hex = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (id.toHexString() != hex) {
         throw Exception("Sha256 hex round-trip failed")
     }
@@ -923,7 +923,7 @@ func testObjectIdSha256HexRoundTrip(): Unit {
 func testObjectIdBytesPreserved(): Unit {
     // 对齐 Rust: ObjectId::from_bytes_or_panic → as_bytes() 往返
     let hex = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     let fromBytes = ObjectId(id.bytes, id.kind)
     if (!fromBytes.equals(id)) {
         throw Exception("ObjectId bytes should be preserved through round-trip")
@@ -1035,8 +1035,8 @@ func testMatchHashKindDifferent(): Unit {
 @Test
 func testObjectIdOperatorEquals(): Unit {
     // 对齐 Rust: ObjectId == 运算符
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (!(id1 == id2)) {
         throw Exception("== operator should return true for same ObjectId")
     }
@@ -1045,8 +1045,8 @@ func testObjectIdOperatorEquals(): Unit {
 @Test
 func testObjectIdOperatorNotEquals(): Unit {
     // 对齐 Rust: ObjectId != 运算符
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     if (!(id1 != id2)) {
         throw Exception("!= operator should return true for different ObjectId")
     }
@@ -1055,8 +1055,8 @@ func testObjectIdOperatorNotEquals(): Unit {
 @Test
 func testObjectIdHashCode(): Unit {
     // 对齐 Rust: ObjectId 的 Hashable 实现 — 相同 ObjectId 应有相同 hashCode
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (id1.hashCode() != id2.hashCode()) {
         throw Exception("same ObjectId should have same hashCode")
     }
@@ -1065,8 +1065,8 @@ func testObjectIdHashCode(): Unit {
 @Test
 func testObjectIdHashCodeDifferent(): Unit {
     // 对齐 Rust: 不同 ObjectId hashCode 不一定不同，但通常应不同
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     // 不同 ObjectId 的 hashCode 通常不同（不保证但极大概率）
     // 此测试验证 hashCode 不会对两个不同 ID 返回相同值
     if (id1.hashCode() == id2.hashCode()) {
@@ -1082,7 +1082,7 @@ func testObjectIdHashCodeDifferent(): Unit {
 @Test
 func testHasherSha1KnownTestVector(): Unit {
     // 对齐 Rust: SHA-1 RFC 3174 测试向量 — 1,000,000 × "a"
-    // 简化版：验证较长的重复输入
+    // 对齐 Rust: git_hash::digest — 验证较长的重复输入
     let h = GixHasher(HashKind.Sha1)
     var builder = ArrayList<Byte>()
     for (i in 0..1000) {

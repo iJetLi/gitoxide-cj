@@ -58,7 +58,7 @@ public class CommitRef {
     // 获取根树对象的 ObjectId
     // 返回值：由 tree 字段解析得到的 ObjectId
     public func treeId(): ObjectId {
-        ObjectId.fromHex(tree)
+        ObjectId.fromHexOrThrow(tree)
     }
 
     // 获取所有父提交的 ObjectId 列表
@@ -66,7 +66,7 @@ public class CommitRef {
     public func parentIds(): ArrayList<ObjectId> {
         var result = ArrayList<ObjectId>()
         for (p in parents) {
-            result.add(ObjectId.fromHex(p))
+            result.add(ObjectId.fromHexOrThrow(p))
         }
         result
     }
@@ -87,10 +87,10 @@ public class CommitRef {
     // 内部将字符串字段解析为结构化类型
     // 返回值：解析成功返回 Commit，任一签名解析失败则返回 None
     public func intoOwned(): ?Commit {
-        let treeId = ObjectId.fromHex(tree)
+        let treeId = ObjectId.fromHexOrThrow(tree)
         var parentIds = ArrayList<ObjectId>()
         for (p in parents) {
-            parentIds.add(ObjectId.fromHex(p))
+            parentIds.add(ObjectId.fromHexOrThrow(p))
         }
         let authorSig = Signature.parse(author.toArray())
         let committerSig = Signature.parse(committer.toArray())

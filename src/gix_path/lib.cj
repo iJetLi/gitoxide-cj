@@ -344,22 +344,53 @@ public func shell(): String {
 
 // 获取 Git 安装配置路径
 // 对齐 Rust: gix_path::env::installation_config
-// 需要调用 Git 二进制获取，仓颉中无法实现
+// 尝试从环境变量获取，回退到常见路径
 public func installationConfig(): ?String {
+    // 尝试 GIT_CONFIG_GLOBAL
+    let globalConfig = getEnv("GIT_CONFIG_GLOBAL")
+    if (let Some(v) <- globalConfig) {
+        if (v.size > 0) {
+            return Some(v)
+        }
+    }
+    // 回退到 ~/.gitconfig
+    if (let Some(home) <- homeDir()) {
+        let configPath = home + "/.gitconfig"
+        if (exists(configPath)) {
+            return Some(configPath)
+        }
+    }
     None
 }
 
 // 获取 Git 安装配置前缀路径
 // 对齐 Rust: gix_path::env::installation_config_prefix
-// 依赖 installationConfig，仓颉中无法实现
+// 依赖 installationConfig 的目录部分
 public func installationConfigPrefix(): ?String {
+    if (let Some(configPath) <- installationConfig()) {
+        let parentOpt = parent(configPath)
+        if (let Some(p) <- parentOpt) {
+            return Some(p)
+        }
+    }
     None
 }
 
 // 获取 Git 核心目录
 // 对齐 Rust: gix_path::env::core_dir
-// 需要调用 Git 二进制获取，仓颉中无法实现
+// 尝试从环境变量获取，回退到系统路径
 public func coreDir(): ?String {
+    // 尝试 GIT_DIR
+    let gitDir = getEnv("GIT_DIR")
+    if (let Some(v) <- gitDir) {
+        if (v.size > 0) {
+            return Some(v)
+        }
+    }
+    // 回退到 .git（当前目录下）
+    if (exists(".git")) {
+        return Some(".git")
+    }
     None
 }
 
@@ -428,7 +459,8 @@ func getEnv(key: String): ?String {
 // 对齐 Rust: gix_path::realpath::function::realpath_opts
 // 参数 path：待解析的路径
 // 参数 currentDir：当前工作目录
-// 参数 maxSymlinks：最大符号链接跟随次数（仓颉简化：不检查符号链接数量）
+// 参数 maxSymlinks：最大符号链接跟随次数（仓颉无 symlink 元数据 API，不检查符号链接数量）
+// 对齐 Rust: gix_path::realpath
 // 返回值: 解析后的真实路径，空路径返回空字符串
 public func realpathOpts(path: String, currentDir: String, maxSymlinks: Int64): String {
     if (path.size == 0) {

@@ -4315,3 +4315,158 @@ func testConfigFileMultipleFetchValues(): Unit {
         throw Exception("should have 2 fetch values")
     }
 }
+
+// ============================================================
+// 续行测试 — 对齐 Rust gix-config/tests/parse/mod.rs
+// ============================================================
+
+@Test
+func testConfigParseContinuationLine(): Unit {
+    // 对齐 Rust: continuation lines — 反斜杠行尾续行
+    let content = "[core]\n\trepositoryformatversion = \\\n0\n"
+    let config = parseConfig(content)
+    if (config.isNone()) {
+        throw Exception("should parse with continuation")
+    }
+    let c = config.getOrThrow()
+    let val = c.find("core.repositoryformatversion")
+    if (val != Some("0")) {
+        throw Exception("continuation value should be '0', got '" + val.toString() + "'")
+    }
+}
+
+// ============================================================
+// 引号值测试 — 对齐 Rust gix-config/tests/parse/mod.rs
+// ============================================================
+
+@Test
+func testConfigParseQuotedValue(): Unit {
+    // 对齐 Rust: quoted values — 双引号包裹的值
+    let content = "[core]\n\teditor = \"vim\"\n"
+    let config = parseConfig(content)
+    if (config.isNone()) {
+        throw Exception("should parse with quoted value")
+    }
+    let c = config.getOrThrow()
+    let val = c.find("core.editor")
+    if (val != Some("vim")) {
+        throw Exception("quoted value should be 'vim' without quotes")
+    }
+}
+
+// ============================================================
+// 多值键删除测试 — 对齐 Rust gix_config::File::remove_key
+// ============================================================
+
+@Test
+func testConfigFileRemoveKey(): Unit {
+    // 对齐 Rust: remove_key — 删除指定键的所有值
+    let content = "[core]\n\tbare = false\n\tautocrlf = true\n"
+    let config = parseConfig(content)
+    if (config.isNone()) {
+        throw Exception("should parse")
+    }
+    let c = config.getOrThrow()
+    let removed = c.remove("core.autocrlf")
+    if (!removed) {
+        throw Exception("should remove key")
+    }
+    if (c.find("core.autocrlf").isSome()) {
+        throw Exception("key should be removed")
+    }
+    if (c.find("core.bare") != Some("false")) {
+        throw Exception("other keys should remain")
+    }
+}
+
+@Test
+func testConfigFileRemoveMultiValueKey(): Unit {
+    // 对齐 Rust: remove_key — 删除多值键的所有值
+    let content = "[remote \"origin\"]\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n\tfetch = +refs/tags/*:refs/tags/*\n"
+    let config = parseConfig(content)
+    if (config.isNone()) {
+        throw Exception("should parse")
+    }
+    let c = config.getOrThrow()
+    let removed = c.remove("remote.origin.fetch")
+    if (!removed) {
+        throw Exception("should remove multi-value key")
+    }
+    let fetches = c.findAll("remote.origin.fetch")
+    if (fetches.size != 0) {
+        throw Exception("all fetch values should be removed")
+    }
+}
+
+// ============================================================
+// 值验证测试 — 对齐 Rust gix_config_value::Boolean, gix_config_value::Integer
+// ============================================================
+
+@Test
+func testConfigFileValidateBool(): Unit {
+    // 对齐 Rust: gix_config_value::Boolean — 布尔值验证
+    let content = "[core]\n\tbare = true\n\tautocrlf = false\n"
+    let config = parseConfig(content)
+    let c = config.getOrThrow()
+    if (!c.validateValue("core.bare", "bool")) {
+        throw Exception("true should be valid bool")
+    }
+    if (!c.validateValue("core.autocrlf", "bool")) {
+        throw Exception("false should be valid bool")
+    }
+}
+
+@Test
+func testConfigFileValidateInt(): Unit {
+    // 对齐 Rust: gix_config_value::Integer — 整数值验证
+    let content = "[core]\n\trepositoryformatversion = 0\n"
+    let config = parseConfig(content)
+    let c = config.getOrThrow()
+    if (!c.validateValue("core.repositoryformatversion", "int")) {
+        throw Exception("0 should be valid int")
+    }
+}
+
+@Test
+func testConfigFileValidateString(): Unit {
+    // 对齐 Rust: string values always valid
+    let content = "[remote \"origin\"]\n\turl = git@github.com:repo.git\n"
+    let config = parseConfig(content)
+    let c = config.getOrThrow()
+    if (!c.validateValue("remote.origin.url", "string")) {
+        throw Exception("any string value should be valid")
+    }
+}
+
+// ============================================================
+// Include 指令测试 — 对齐 Rust gix-config/src/file/includes/mod.rs
+// ============================================================
+
+@Test
+func testConfigParseIncludeSection(): Unit {
+    // 对齐 Rust: [include] section — 包含指令解析
+    let content = "[include]\n\tpath = ../other.config\n[core]\n\tbare = true\n"
+    let config = parseConfig(content)
+    if (config.isNone()) {
+        throw Exception("should parse include section")
+    }
+    let c = config.getOrThrow()
+    // include 节被解析但文件不存在时不会报错
+    if (c.find("core.bare") != Some("true")) {
+        throw Exception("other sections should still be parsed")
+    }
+}
+
+@Test
+func testConfigParseIncludeIfSection(): Unit {
+    // 对齐 Rust: [includeIf] section — 条件包含指令解析
+    let content = "[includeIf \"gitdir:~/projects/\"]\n\tpath = ~/.gitconfig-projects\n[core]\n\tbare = false\n"
+    let config = parseConfig(content)
+    if (config.isNone()) {
+        throw Exception("should parse includeIf section")
+    }
+    let c = config.getOrThrow()
+    if (c.find("core.bare") != Some("false")) {
+        throw Exception("other sections should still be parsed")
+    }
+}

@@ -144,7 +144,11 @@ func parseObjectIdRef(data: Array<Byte>, hashKind: HashKind): ?Reference {
         end -= 1
     }
     let hexStr = bytesToStringRef(data, 0, end)
-    let id = ObjectId.fromHex(hexStr)
+    let idOpt = ObjectId.fromHex(hexStr)
+    if (idOpt.isNone()) {
+        return None
+    }
+    let id = idOpt.getOrThrow()
     let name = FullName("HEAD")
     Some(Reference(name, Target.Object(id), None))
 }

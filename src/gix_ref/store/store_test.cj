@@ -175,7 +175,7 @@ func testStoreFileWriteObjectRefAndRead(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let id = ObjectId.fromHex("9556057aee5abb06912922e9f26c46386a816822")
+    let id = ObjectId.fromHexOrThrow("9556057aee5abb06912922e9f26c46386a816822")
     let refVal = Reference(name.getOrThrow(), Target.Object(id), None)
     store.write(refVal)
     let found = store.find(name.getOrThrow())
@@ -194,8 +194,8 @@ func testStoreFileWriteMultipleRefsAndIter(): Unit {
     // 对齐 Rust: file::Store — 写入多个引用并遍历
     let testDir = "C:/temp/gix-ref-store-multi-test-" + 1000000.toString()
     let store = FileStore(testDir, HashKind.Sha1)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("9556057aee5abb06912922e9f26c46386a816822")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("9556057aee5abb06912922e9f26c46386a816822")
     let name1 = FullName.tryFrom("refs/heads/main")
     let name2 = FullName.tryFrom("refs/heads/develop")
     if (name1.isNone() || name2.isNone()) {

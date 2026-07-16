@@ -186,7 +186,7 @@ func filterSha1Hex(data: Array<Byte>): String {
 }
 
 // String → Array<Byte> 辅助函数
-func stringToBytes(s: String): Array<Byte> {
+public func stringToBytes(s: String): Array<Byte> {
     var buf = ArrayList<Byte>()
     for (ch in s) {
         buf.add(ch)

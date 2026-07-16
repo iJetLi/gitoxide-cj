@@ -552,3 +552,60 @@ public class SymlinkCheck {
         root + "/" + relativePath
     }
 }
+
+
+// ============================================================
+// index_as_worktree 错误类型 - 对齐 gix-status/src/index_as_worktree/types.rs Error
+// ============================================================
+
+// index_as_worktree 操作的错误类型
+// 对齐 Rust: index_as_worktree::types::Error
+public enum StatusError {
+    | IllformedUtf8
+    | Time(String)
+    | Io(String)
+    | Find(String)
+    | SubmoduleStatus(String, String)
+}
+
+// ============================================================
+// index_as_worktree_with_renames 错误类型
+// 对齐 gix-status/src/index_as_worktree_with_renames/types.rs Error
+// ============================================================
+
+// index_as_worktree_with_renames 操作的错误类型
+public enum RenameStatusError {
+    | TrackedFileModifications(StatusError)
+    | DirWalk(String)
+    | SpawnThread(String)
+    | SetAttributeContext(String)
+    | OpenWorktreeFile(String)
+    | HashFile(String)
+    | ReadLink(String)
+    | ConvertToGit(String)
+    | RewriteTracker(String)
+}
+
+// ============================================================
+// FsCapabilities - 对齐 gix-status/src/index_as_worktree/types.rs fs::Capabilities
+// ============================================================
+
+// 文件系统能力
+// 对齐 Rust: gix_fs::Capabilities
+public class FsCapabilities {
+    // 是否区分大小写
+    public var caseSensitive: Bool
+    // 是否支持符号链接
+    public var symlink: Bool
+    // 是否支持可执行位
+    public var executableBit: Bool
+    // 是否预组合 Unicode
+    public var precomposeUnicode: Bool
+
+    public init() {
+        this.caseSensitive = true
+        this.symlink = true
+        this.executableBit = true
+        this.precomposeUnicode = false
+    }
+}

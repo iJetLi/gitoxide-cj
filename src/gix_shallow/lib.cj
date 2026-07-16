@@ -45,7 +45,7 @@ public class ShallowFile {
             for (line in lines) {
                 let trimmed = trimStr(line)
                 if (trimmed.size > 0) {
-                    shallow.commits.add(ObjectId.fromHex(trimmed))
+                    shallow.commits.add(ObjectId.fromHexOrThrow(trimmed))
                 }
             }
             Some(shallow)

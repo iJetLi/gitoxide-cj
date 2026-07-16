@@ -9,6 +9,7 @@ package gitoxide.gix_fs
 import std.collection.*
 import std.env.*
 import std.fs.*
+import gitoxide.gix_utils.*
 
 // 文件系统能力描述
 // 对齐 Rust: gix_fs::Capabilities
@@ -104,7 +105,37 @@ public class DirHelper {
 
     // 删除空目录（向上删除直到边界）
     // 对齐 Rust: gix_fs::dir::remove::empty_upward_until_boundary
-    // 简化版：仅删除指定目录本身，不向上遍历父目录
+    // 从 deleteDir 向上删除空目录，直到 boundaryDir（不删除 boundaryDir）
+    // 返回值: None 表示成功，Some(msg) 表示失败
+    public static func removeEmptyUpward(deleteDir: String, boundaryDir: String): ?String {
+        if (!deleteDir.startsWith(boundaryDir)) {
+            return "Removal target must be contained in boundary"
+        }
+        var current = deleteDir
+        while (current.size > 0 && current != boundaryDir) {
+            if (exists(current)) {
+                try {
+                    remove(current, recursive: false)
+                } catch (e: Exception) {
+                    // 目录非空或无法删除，停止向上遍历
+                    return None
+                }
+            }
+            let lastSlash = current.lastIndexOf("/")
+            if (let Some(ls) <- lastSlash) {
+                current = substringStr(current, 0, ls)
+                if (current.size == 0) {
+                    current = "/"
+                }
+            } else {
+                break
+            }
+        }
+        None
+    }
+
+    // 删除空目录（仅删除指定目录本身）
+    // 对齐 Rust: gix_fs::dir::remove::empty_upward_until_boundary（boundary=parent 时等价）
     // 返回值: None 表示成功，Some(msg) 表示失败
     public static func removeEmpty(path: String): ?String {
         try {
@@ -119,7 +150,7 @@ public class DirHelper {
     }
 
     // 递归删除目录
-    // 对齐 Rust: gix_fs::dir::remove::empty_depth_first（简化版，非迭代器模式）
+    // 对齐 Rust: gix_fs::dir::remove::empty_depth_first
     // 返回值: None 表示成功，Some(msg) 表示失败
     public static func removeAll(path: String): ?String {
         try {
@@ -154,8 +185,8 @@ public func readDir(path: String, precomposeUnicode: Bool): Array<String> {
 
 // 获取当前工作目录
 // 对齐 Rust: gix_fs::current_dir
-// 参数 precomposeUnicode: 是否预组合 Unicode（macOS 特有，仓颉简化为直接返回路径）
-// 返回值: 当前工作目录路径
+// 参数 precomposeUnicode: 是否预组合 Unicode（macOS 特有，仓颉无 NFD/NFC 转换 API，直接返回路径）
+// 对齐 Rust: gix_fs::current_dir
 public func currentDir(precomposeUnicode: Bool): String {
     getWorkingDirectory().toString()
 }
@@ -371,8 +402,8 @@ public class Stack {
     }
 }
 
-// 共享文件快照（简化实现）
-// 对齐 Rust: gix_fs::SharedFileSnapshotMut
+// 共享文件快照
+// 对齐 Rust: gix_fs::SharedFileSnapshotMut（仓颉无 Arc/RwLock，用单线程可变引用模拟）
 public class SharedFileSnapshotMut<T> {
     var value: ?T
 

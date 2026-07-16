@@ -36,7 +36,7 @@ public class GixHasher {
     public func tryFinalize(): ObjectId {
         let allBytes = data.toArray()
         let hexStr = computeHashHex(kind, allBytes)
-        ObjectId.fromHex(hexStr)
+        ObjectId.fromHexOrThrow(hexStr)
     }
 }
 

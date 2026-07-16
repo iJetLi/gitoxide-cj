@@ -583,7 +583,7 @@ public class IndexFile {
     }
 
     // 顺序遍历索引条目并收集统计信息
-    // 对齐 Rust: index::traverse（简化版，无 delta tree）
+    // 对齐 Rust: gix-pack::index::traverse（仓颉无 delta tree 优化，顺序遍历等价）
     // 参数 dataFile：pack 数据文件（用于解码对象类型）
     // 参数 options：遍历选项
     public func traverse(dataFile: DataFile, options: TraverseOptions): ?TraverseStatistics {

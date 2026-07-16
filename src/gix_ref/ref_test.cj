@@ -260,7 +260,7 @@ func testReferenceSymbolicToBytes(): Unit {
 @Test
 func testReferenceObjectToBytes(): Unit {
     // 对齐 Rust: Reference::to_bytes — 对象引用
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let name = FullName("HEAD")
     let refVal = Reference(name, Target.Object(id), None)
     let bytes = refVal.toBytes()
@@ -345,7 +345,7 @@ func testReferenceRoundTripSymbolic(): Unit {
 @Test
 func testReferenceRoundTripObject(): Unit {
     // 对齐 Rust: Reference round-trip — object refVal
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let name = FullName("HEAD")
     let ref1 = Reference(name, Target.Object(id), None)
     let bytes = ref1.toBytes()
@@ -393,7 +393,7 @@ func testReferenceFromBytesObjectNoNewline(): Unit {
 @Test
 func testTargetKindObject(): Unit {
     // 对齐 Rust: Target::Object → RefKind::Object
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let kind = targetKind(Target.Object(id))
     if (kind != RefKind.Object) {
         throw Exception("Object target should be Object kind")
@@ -417,7 +417,7 @@ func testTargetKindSymbolic(): Unit {
 @Test
 func testTargetTryId(): Unit {
     // 对齐 Rust: target_try_id — Object → Some, Symbolic → None
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let objResult = targetTryId(Target.Object(id))
     if (objResult.isNone()) {
         throw Exception("Object target should return Some(id)")
@@ -444,7 +444,7 @@ func testTargetTryName(): Unit {
     if (symResult.isNone()) {
         throw Exception("Symbolic target should return Some(name)")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let objResult = targetTryName(Target.Object(id))
     if (!objResult.isNone()) {
         throw Exception("Object target should return None for tryName")
@@ -458,7 +458,7 @@ func testTargetIsNull(): Unit {
     if (!targetIsNull(Target.Object(nullId))) {
         throw Exception("null ObjectId target should be null")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (targetIsNull(Target.Object(id))) {
         throw Exception("non-null ObjectId target should not be null")
     }
@@ -596,7 +596,7 @@ func testTransactionCreate(): Unit {
     if (name.isNone()) {
         throw Exception("name should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tx.create(name.getOrThrow(), Target.Object(id))
     if (tx.edits.size != 1) {
         throw Exception("should have 1 edit after create")
@@ -633,7 +633,7 @@ func testTransactionUpdate(): Unit {
     if (name.isNone()) {
         throw Exception("name should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tx.update(name.getOrThrow(), Target.Object(id))
     if (tx.edits.size != 1) {
         throw Exception("should have 1 edit after update")
@@ -654,7 +654,7 @@ func testTransactionChainedEdits(): Unit {
     if (name1.isNone() || name2.isNone() || name3.isNone()) {
         throw Exception("names should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tx
         .create(name1.getOrThrow(), Target.Object(id))
         .update(name2.getOrThrow(), Target.Object(id))
@@ -1065,7 +1065,7 @@ func testReferenceFromBytesSymbolicWithWhitespace(): Unit {
 @Test
 func testReferenceFromBytesObjectSha256(): Unit {
     // 对齐 Rust: Reference::from_bytes — SHA-256 对象引用
-    let content = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e\n"
+    let content = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce\n"
     let refVal = Reference.fromBytes(content.toArray(), HashKind.Sha256)
     if (refVal.isNone()) {
         throw Exception("SHA-256 object ref should parse")
@@ -1093,7 +1093,7 @@ func testReferenceToBytesSymbolicFormat(): Unit {
 @Test
 func testReferenceToBytesObjectFormat(): Unit {
     // 对齐 Rust: Reference::to_bytes — 对象引用格式验证
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let name = FullName("HEAD")
     let refVal = Reference(name, Target.Object(id), None)
     let bytes = refVal.toBytes()
@@ -1131,7 +1131,7 @@ func testReferenceKindSymbolic(): Unit {
 @Test
 func testReferenceKindObject(): Unit {
     // 对齐 Rust: Reference::kind — 对象引用
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let name = FullName("HEAD")
     let refVal = Reference(name, Target.Object(id), None)
     if (refVal.kind() != RefKind.Object) {
@@ -1155,7 +1155,7 @@ func testReferenceTryIdSymbolicReturnsNone(): Unit {
 @Test
 func testReferenceTryNameObjectReturnsNone(): Unit {
     // 对齐 Rust: Reference::try_name — 对象引用返回 None
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let name = FullName("HEAD")
     let refVal = Reference(name, Target.Object(id), None)
     if (!refVal.tryName().isNone()) {
@@ -1166,8 +1166,8 @@ func testReferenceTryNameObjectReturnsNone(): Unit {
 @Test
 func testReferenceWithPeeled(): Unit {
     // 对齐 Rust: Reference with peeled ObjectId
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let peeled = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let peeled = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     let name = FullName.tryFrom("refs/tags/v1.0")
     if (name.isNone()) {
         throw Exception("should parse")
@@ -1208,7 +1208,7 @@ func testTransactionMultipleCreates(): Unit {
     if (name1.isNone() || name2.isNone()) {
         throw Exception("should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tx.create(name1.getOrThrow(), Target.Object(id))
     tx.create(name2.getOrThrow(), Target.Object(id))
     if (tx.edits.size != 2) {
@@ -1299,7 +1299,7 @@ func testTransactionEditNamePreserved(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tx.update(name.getOrThrow(), Target.Object(id))
     if (tx.edits[0].name.value != "refs/heads/main") {
         throw Exception("edit name should be preserved")
@@ -1314,7 +1314,7 @@ func testTransactionEditTargetPreserved(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tx.update(name.getOrThrow(), Target.Object(id))
     let editTarget = tx.edits[0].target
     if (let Target.Object(tid) <- editTarget) {
@@ -1437,7 +1437,7 @@ func testReferenceRoundTripMultipleObject(): Unit {
         "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
     ]
     for (hex in hexIds) {
-        let id = ObjectId.fromHex(hex)
+        let id = ObjectId.fromHexOrThrow(hex)
         let name = FullName("HEAD")
         let ref1 = Reference(name, Target.Object(id), None)
         let bytes = ref1.toBytes()
@@ -1650,8 +1650,8 @@ func testTransactionPrepareCreateThenUpdate(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     tx.create(name.getOrThrow(), Target.Object(id1))
     tx.update(name.getOrThrow(), Target.Object(id2))
     if (tx.edits.size != 2) {
@@ -1667,7 +1667,7 @@ func testTransactionPrepareUpdateThenDelete(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     tx.update(name.getOrThrow(), Target.Object(id))
     tx.delete(name.getOrThrow())
     if (tx.edits.size != 2) {
@@ -1684,7 +1684,7 @@ func testTransactionPrepareMixedTypes(): Unit {
         ("refs/heads/main", EditType.Update),
         ("refs/tags/old", EditType.Delete)
     ]
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     for ((n, _) in names) {
         let name = FullName.tryFrom(n)
         if (name.isNone()) {
@@ -1820,7 +1820,7 @@ func testParseNewlineAtEnd(): Unit {
 @Test
 func testPeelRefObjectDirect(): Unit {
     // 对齐 Rust: peel_ref — 直接对象引用
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let name = FullName("HEAD")
     let refVal = Reference(name, Target.Object(id), None)
     let finder = TestFinder()
@@ -1836,8 +1836,8 @@ func testPeelRefObjectDirect(): Unit {
 @Test
 func testPeelRefWithPeeled(): Unit {
     // 对齐 Rust: peel_ref — 含 peeled 值
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let peeled = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let peeled = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     let name = FullName.tryFrom("refs/tags/v1.0")
     if (name.isNone()) {
         throw Exception("should parse")
@@ -1856,7 +1856,7 @@ func testPeelRefWithPeeled(): Unit {
 @Test
 func testPeelRefSymbolicOneLevel(): Unit {
     // 对齐 Rust: peel_ref — 一层符号引用
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let mainName = FullName.tryFrom("refs/heads/main")
     if (mainName.isNone()) {
         throw Exception("should parse")
@@ -2050,7 +2050,7 @@ func testTargetSymbolicInvalidPath(): Unit {
 @Test
 func testTargetObjectConstruction(): Unit {
     // 对齐 Rust: target::Object — 从 ObjectId 构造
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let obj = Target.Object(id)
     if (targetKind(obj) != RefKind.Object) {
         throw Exception("Object target kind should be Object")
@@ -2060,7 +2060,7 @@ func testTargetObjectConstruction(): Unit {
 @Test
 func testTargetTryIdFromObject(): Unit {
     // 对齐 Rust: target::try_id — 从 Object 目标提取 ObjectId
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let target = Target.Object(id)
     let extracted = targetTryId(target)
     if (extracted.isNone()) {
@@ -2105,7 +2105,7 @@ func testTargetTryNameFromSymbolic(): Unit {
 @Test
 func testTargetTryNameFromObject(): Unit {
     // 对齐 Rust: target::try_name — 从 Object 目标提取 FullName 应返回 None
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let target = Target.Object(id)
     let extracted = targetTryName(target)
     if (extracted.isSome()) {
@@ -2124,7 +2124,7 @@ func testReferenceKindObjectSupplement(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let refVal = Reference(name.getOrThrow(), Target.Object(id), None)
     if (refVal.kind() != RefKind.Object) {
         throw Exception("reference with Object target should have Object kind")
@@ -2159,7 +2159,7 @@ func testReferenceFollowSymbolic(): Unit {
     if (mainName.isNone()) {
         throw Exception("should parse")
     }
-    let mainId = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let mainId = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let mainRef = Reference(mainName.getOrThrow(), Target.Object(mainId), None)
     let headRef = Reference(headName.getOrThrow(), Target.Symbolic(mainName.getOrThrow()), None)
     let finder = TestFinder.withRef(mainRef)
@@ -2445,7 +2445,7 @@ func testTransactionCreateEdit(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let target = Target.Object(ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec"))
+    let target = Target.Object(ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec"))
     tx.create(name.getOrThrow(), target)
     if (tx.edits.size != 1) {
         throw Exception("should have 1 edit")
@@ -2480,7 +2480,7 @@ func testTransactionUpdateEdit(): Unit {
     if (name.isNone()) {
         throw Exception("should parse")
     }
-    let target = Target.Object(ObjectId.fromHex("9556057aee5abb06912922e9f26c46386a816822"))
+    let target = Target.Object(ObjectId.fromHexOrThrow("9556057aee5abb06912922e9f26c46386a816822"))
     tx.update(name.getOrThrow(), target)
     if (tx.edits.size != 1) {
         throw Exception("should have 1 edit")
@@ -2499,7 +2499,7 @@ func testTransactionMultipleEdits(): Unit {
     if (name1.isNone() || name2.isNone()) {
         throw Exception("should parse")
     }
-    let target = Target.Object(ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec"))
+    let target = Target.Object(ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec"))
     tx.create(name1.getOrThrow(), target)
     tx.update(name2.getOrThrow(), target)
     if (tx.edits.size != 2) {

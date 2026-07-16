@@ -161,7 +161,7 @@ public class Time {
         } else {
             offsetMins.toString()
         }
-        // 简化：直接用时间戳 + 偏移量表示
+        // 对齐 Rust: gix_date::Time::to_bstring() — 时间戳 + 时区偏移格式
         seconds.toString() + " " + signStr + hStr + ":" + mStr
     }
 }

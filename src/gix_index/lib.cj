@@ -2,6 +2,7 @@
 // 用途：Git 索引文件（.git/index）解析与编码，管理暂存区条目
 // 所属包：gix.gix_index
 // 关键类型：IndexEntry, IndexFile
+// 对齐 Rust: gix-index/src/lib.rs, gix-index/src/decode/mod.rs, gix-index/src/file/mod.rs, gix-index/src/entry/mod.rs
 
 package gitoxide.gix_index
 
@@ -10,6 +11,7 @@ import std.fs.*
 import std.collection.*
 
 // 索引条目，对应暂存区中的一个文件记录
+// 对齐 Rust: gix_index::entry::Stat
 public class IndexEntry {
     // 创建时间的秒部分
     public var ctimeS: Int64
@@ -23,7 +25,7 @@ public class IndexEntry {
     public var dev: Int64
     // inode 号
     public var ino: Int64
-    // 文件模式（权限位）
+    // 文件模式（权限位），对齐 Rust: gix_index::entry::Mode
     public var mode: Int64
     // 用户 ID
     public var uid: Int64
@@ -33,8 +35,10 @@ public class IndexEntry {
     public var fileSize: Int64
     // 文件内容的对象 ID
     public var id: ObjectId
-    // 条目标志位（包含名称长度等）
+    // 条目标志位（包含名称长度等），对齐 Rust: gix_index::entry::Flags
     public var flags: Int64
+    // 扩展标志位（版本 3+），对齐 Rust: gix_index::entry::FlagsExtended
+    public var flagsExtended: Int64
     // 文件路径（相对于仓库根目录）
     public var path: String
 
@@ -53,24 +57,43 @@ public class IndexEntry {
         this.fileSize = 0
         this.id = id
         this.flags = 0
+        this.flagsExtended = 0
         this.path = path
     }
 }
 
+// 索引扩展数据，对齐 Rust: gix_index::extension
+public class IndexExtension {
+    // 扩展签名（4字节）
+    public var signature: String
+    // 扩展数据
+    public var data: Array<Byte>
+
+    public init(signature: String, data: Array<Byte>) {
+        this.signature = signature
+        this.data = data
+    }
+}
+
 // 索引文件，对应 .git/index 暂存区文件
+// 对齐 Rust: gix_index::File
 public class IndexFile {
     // 索引文件格式版本号
     public var version: Int64
     // 暂存区条目列表
     public var entries: ArrayList<IndexEntry>
+    // 扩展数据列表，对齐 Rust: gix_index::extension::decode
+    public var extensions: ArrayList<IndexExtension>
 
     // 初始化空索引文件，默认版本号为 2
     public init() {
         this.version = 2
         this.entries = ArrayList<IndexEntry>()
+        this.extensions = ArrayList<IndexExtension>()
     }
 
     // 从磁盘打开并解析索引文件
+    // 对齐 Rust: gix_index::File::at
     // 参数 path: 索引文件路径
     // 返回值: 解析成功返回 IndexFile，文件不存在或解析失败返回 None
     public static func open(path: String): ?IndexFile {
@@ -113,7 +136,8 @@ public class IndexFile {
         entries.add(entry)
     }
 
-    // 按路径查找暂存区条目
+    // 按路径查找暂存区条目（区分大小写）
+    // 对齐 Rust: gix_index::File::entry_by_path
     // 参数 path: 文件相对路径
     // 返回值: 找到返回对应条目，未找到返回 None
     public func find(path: String): ?IndexEntry {
@@ -125,7 +149,30 @@ public class IndexFile {
         None
     }
 
+    // 按路径查找暂存区条目（不区分大小写）
+    // 对齐 Rust: gix_index::File::entry_by_path_icase
+    // 参数 path: 文件相对路径
+    // 返回值: 找到返回对应条目，未找到返回 None
+    public func findCaseInsensitive(path: String): ?IndexEntry {
+        let pathLower = toLowerStr(path)
+        for (entry in entries) {
+            if (toLowerStr(entry.path) == pathLower) {
+                return Some(entry)
+            }
+        }
+        None
+    }
+
+    // 检查索引是否包含指定路径（不区分大小写）
+    // 对齐 Rust: gix_index::File::has_path_icase
+    // 参数 path: 文件相对路径
+    // 返回值: 存在返回 true
+    public func hasPathCaseInsensitive(path: String): Bool {
+        findCaseInsensitive(path).isSome()
+    }
+
     // 从字节数据解析索引文件内容
+    // 对齐 Rust: gix_index::decode
     // 参数 data: 索引文件的原始字节数据
     func parse(data: Array<Byte>): Unit {
         if (data.size < 12) {
@@ -141,6 +188,7 @@ public class IndexFile {
         var i: Int64 = 0
         while (i < numEntries && pos + 62 <= data.size) {
             let entryStart = pos
+            // 解析 stat 信息，对齐 Rust: gix_index::entry::Stat
             pos += 40
             let hashLen: Int64 = 20
             let hashStart = pos
@@ -148,16 +196,37 @@ public class IndexFile {
             let flagsStart = pos
             pos += 2
             let pathLen = (Int64(data[flagsStart]) << 8 | Int64(data[flagsStart + 1])) & 0xFFF
+            // 版本 3+ 扩展标志，对齐 Rust: gix_index::entry::FlagsExtended
+            if (version >= 3 && pathLen == 0xFFF) {
+                if (pos + 2 <= data.size) {
+                    pos += 2
+                }
+            }
             let pathStart = pos
             pos += pathLen
             let entryPath = bytesToStringIdx(data, pathStart, pos)
             let oidBytes = sliceBytesIdx(data, hashStart, hashStart + hashLen)
             let oid = ObjectId(oidBytes, HashKind.Sha1)
-            entries.add(IndexEntry(entryPath, oid))
+            let entry = IndexEntry(entryPath, oid)
+            entry.flags = (Int64(data[flagsStart]) << 8 | Int64(data[flagsStart + 1]))
+            entries.add(entry)
             let entryLen = 62 + pathLen
             let padding = (8 - (entryLen % 8)) % 8
             pos = entryStart + entryLen + padding
             i += 1
+        }
+        // 解析扩展数据，对齐 Rust: gix_index::extension::decode
+        while (pos + 8 <= data.size) {
+            let extSig = bytesToStringIdx(data, pos, pos + 4)
+            pos += 4
+            let extSize = readU32Idx(data, pos)
+            pos += 4
+            if (pos + extSize > data.size) {
+                break
+            }
+            let extData = sliceBytesIdx(data, pos, pos + extSize)
+            extensions.add(IndexExtension(extSig, extData))
+            pos += extSize
         }
     }
 
@@ -194,6 +263,19 @@ public class IndexFile {
                 p += 1
             }
         }
+        // 编码扩展数据，对齐 Rust: gix_index::extension
+        for (ext in extensions) {
+            for (b in ext.signature.toArray()) {
+                result.add(b)
+            }
+            result.add(UInt8((ext.data.size >> 24) & 0xFF))
+            result.add(UInt8((ext.data.size >> 16) & 0xFF))
+            result.add(UInt8((ext.data.size >> 8) & 0xFF))
+            result.add(UInt8(ext.data.size & 0xFF))
+            for (b in ext.data) {
+                result.add(b)
+            }
+        }
         result.toArray()
     }
 }
@@ -202,7 +284,7 @@ public class IndexFile {
 // 参数 data: 源字节数组
 // 参数 offset: 读取起始偏移
 // 返回值: 读取的 32 位整数值
-func readU32Idx(data: Array<Byte>, offset: Int64): Int64 {
+public func readU32Idx(data: Array<Byte>, offset: Int64): Int64 {
     (Int64(data[offset]) << 24) | (Int64(data[offset + 1]) << 16) | (Int64(data[offset + 2]) << 8) | Int64(data[offset +
             3])
 }
@@ -235,4 +317,18 @@ func sliceBytesIdx(data: Array<Byte>, start: Int64, end: Int64): Array<Byte> {
         i += 1
     }
     result.toArray()
+}
+
+// 小写转换辅助函数（用于不区分大小写查找）
+func toLowerStr(s: String): String {
+    var sb = StringBuilder()
+    for (i in 0..s.size) {
+        let c = s[i]
+        if (c >= UInt8(65) && c <= UInt8(90)) {
+            sb.append(Rune(c + 32))
+        } else {
+            sb.append(Rune(c))
+        }
+    }
+    sb.toString()
 }

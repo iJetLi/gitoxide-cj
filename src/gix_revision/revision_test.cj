@@ -9,13 +9,21 @@ import gitoxide.gix_hash.*
 import std.unittest.*
 import std.collection.*
 import gitoxide.gix_utils.*
+import gitoxide.gix_revwalk.*
 
 // ============================================================
 // 辅助函数
 // ============================================================
 
 func hexToId(hex: String): ObjectId {
-    ObjectId.fromHex(hex)
+    ObjectId.fromHexOrThrow(hex)
+}
+
+// 测试用提交提供器
+class TestCommitProvider <: ProvideCommits {
+    public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
+        None
+    }
 }
 
 // 测试用引用解析器
@@ -34,6 +42,30 @@ class TestResolver <: ResolveRef {
 
     public func resolveParent(id: ObjectId): ?ObjectId {
         parents.get(id)
+    }
+
+    public func resolveNthParent(id: ObjectId, n: Int64): ?ObjectId {
+        None
+    }
+
+    public func resolveTree(id: ObjectId): ?ObjectId {
+        None
+    }
+
+    public func resolvePath(path: String): ?ObjectId {
+        None
+    }
+
+    public func resolveUpstream(refName: String): ?ObjectId {
+        None
+    }
+
+    public func resolvePush(refName: String): ?ObjectId {
+        None
+    }
+
+    public func resolveNthPrior(refName: String, n: Int64): ?ObjectId {
+        None
     }
 }
 
@@ -626,7 +658,7 @@ func testResolveFullHashSha256(): Unit {
 func testResolveHead(): Unit {
     // 对齐 Rust: resolve — HEAD reference
     let resolver = TestResolver()
-    resolver.refs["HEAD"] = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    resolver.refs["HEAD"] = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let spec = Spec("HEAD")
     let result = resolve(spec, resolver)
     if (result.isNone()) {
@@ -638,7 +670,7 @@ func testResolveHead(): Unit {
 func testResolveRefsPath(): Unit {
     // 对齐 Rust: resolve — refs/ path
     let resolver = TestResolver()
-    resolver.refs["refs/heads/main"] = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    resolver.refs["refs/heads/main"] = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     let spec = Spec("refs/heads/main")
     let result = resolve(spec, resolver)
     if (result.isNone()) {
@@ -661,7 +693,7 @@ func testResolveUnknownRef(): Unit {
 func testResolveShortName(): Unit {
     // 对齐 Rust: resolve — short ref name
     let resolver = TestResolver()
-    resolver.refs["main"] = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    resolver.refs["main"] = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let spec = Spec("main")
     let result = resolve(spec, resolver)
     if (result.isNone()) {
@@ -673,8 +705,8 @@ func testResolveShortName(): Unit {
 func testResolveCaretParent(): Unit {
     // 对齐 Rust: resolve — ^ parent syntax
     let resolver = TestResolver()
-    let commitId = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let parentId = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let commitId = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let parentId = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     resolver.refs["HEAD"] = commitId
     resolver.parents[commitId] = parentId
     let spec = Spec("HEAD^")
@@ -1320,10 +1352,11 @@ func testMergeBasePlaceholderExists(): Unit {
     // 当前为占位实现，验证函数可调用
     let id1 = hexToId("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let id2 = hexToId("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    let result = mergeBase(id1, [id2])
-    // 占位实现返回 None
+    let graph = Graph(TestCommitProvider())
+    let result = mergeBase(id1, [id2], graph)
+    // 无实际提交数据，返回 None
     if (!result.isNone()) {
-        throw Exception("placeholder should return None")
+        throw Exception("should return None without commit data")
     }
 }
 
@@ -1333,10 +1366,11 @@ func testMergeBaseOctopusPlaceholderExists(): Unit {
     let id1 = hexToId("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let id2 = hexToId("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
     let id3 = hexToId("cccccccccccccccccccccccccccccccccccccccc")
-    let result = mergeBaseOctopus(id1, [id2, id3])
-    // 占位实现返回 None
+    let graph = Graph(TestCommitProvider())
+    let result = mergeBaseOctopus(id1, [id2, id3], graph)
+    // 无实际提交数据，返回 None
     if (!result.isNone()) {
-        throw Exception("placeholder should return None")
+        throw Exception("should return None without commit data")
     }
 }
 
@@ -1357,23 +1391,25 @@ func testMergeBaseFlagsPlaceholder(): Unit {
 
 @Test
 func testAncestorsPlaceholderExists(): Unit {
-    // 对齐 Rust: Graph — ancestors 遍历占位存在
+    // 对齐 Rust: Graph — ancestors 遍历
     let id = hexToId("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let result = ancestors(id)
-    // 占位实现返回空数组
-    if (result.size != 0) {
-        throw Exception("placeholder should return empty array")
+    let graph = Graph(TestCommitProvider())
+    let result = ancestors(id, graph)
+    // 起始 ID 自身会被返回
+    if (result.size != 1) {
+        throw Exception("should return 1 element (the starting id itself)")
     }
 }
 
 @Test
 func testAncestorsTraversalPlaceholder(): Unit {
-    // 对齐 Rust: Graph — ancestors 遍历带 first_parent 选项占位
+    // 对齐 Rust: Graph — ancestors 遍历带 first_parent 选项
     let id = hexToId("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let result = ancestorsFirstParent(id)
-    // 占位实现返回空数组
-    if (result.size != 0) {
-        throw Exception("placeholder should return empty array")
+    let graph = Graph(TestCommitProvider())
+    let result = ancestorsFirstParent(id, graph)
+    // 起始 ID 自身会被返回
+    if (result.size != 1) {
+        throw Exception("should return 1 element (the starting id itself)")
     }
 }
 

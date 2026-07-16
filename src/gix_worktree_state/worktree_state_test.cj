@@ -150,3 +150,115 @@ func testWorktreeStateMultipleToggles(): Unit {
 // （含 checkout、stash、conflict 等场景），验证 WorktreeState
 // 从实际工作区计算得出。仓颉中暂无法实现，待 gix_odb 与
 // gix_test_utils 文件系统夹具支持完善后补充。
+
+
+// ============================================================
+// CheckoutOutcome 测试 - 对齐 gix-worktree-state/src/checkout/mod.rs Outcome
+// ============================================================
+
+@Test
+func testCheckoutOutcomeDefaults(): Unit {
+    let outcome = CheckoutOutcome()
+    if (outcome.filesUpdated != 0) {
+        throw Exception("filesUpdated should be 0")
+    }
+    if (outcome.bytesWritten != 0) {
+        throw Exception("bytesWritten should be 0")
+    }
+    if (outcome.collisions.size != 0) {
+        throw Exception("collisions should be empty")
+    }
+    if (outcome.errors.size != 0) {
+        throw Exception("errors should be empty")
+    }
+    if (outcome.delayedPathsUnknown.size != 0) {
+        throw Exception("delayedPathsUnknown should be empty")
+    }
+    if (outcome.delayedPathsUnprocessed.size != 0) {
+        throw Exception("delayedPathsUnprocessed should be empty")
+    }
+}
+
+@Test
+func testCheckoutOutcomeWithValues(): Unit {
+    let outcome = CheckoutOutcome()
+    outcome.filesUpdated = 10
+    outcome.bytesWritten = 4096
+    outcome.collisions.add(CheckoutCollision("src/main.cj", "AlreadyExists"))
+    outcome.errors.add(CheckoutErrorRecord("src/missing.cj", "Permission denied"))
+    if (outcome.filesUpdated != 10) {
+        throw Exception("filesUpdated should be 10")
+    }
+    if (outcome.bytesWritten != 4096) {
+        throw Exception("bytesWritten should be 4096")
+    }
+    if (outcome.collisions.size != 1) {
+        throw Exception("should have 1 collision")
+    }
+    if (outcome.errors.size != 1) {
+        throw Exception("should have 1 error")
+    }
+}
+
+// ============================================================
+// CheckoutCollision 测试 - 对齐 gix-worktree-state/src/checkout/mod.rs Collision
+// ============================================================
+
+@Test
+func testCheckoutCollisionConstruct(): Unit {
+    let c = CheckoutCollision("dir/file.txt", "AlreadyExists")
+    if (c.path != "dir/file.txt") {
+        throw Exception("path mismatch")
+    }
+    if (c.errorKind != "AlreadyExists") {
+        throw Exception("errorKind mismatch")
+    }
+}
+
+// ============================================================
+// CheckoutErrorRecord 测试 - 对齐 gix-worktree-state/src/checkout/mod.rs ErrorRecord
+// ============================================================
+
+@Test
+func testCheckoutErrorRecordConstruct(): Unit {
+    let e = CheckoutErrorRecord("locked.txt", "Permission denied")
+    if (e.path != "locked.txt") {
+        throw Exception("path mismatch")
+    }
+    if (e.error != "Permission denied") {
+        throw Exception("error mismatch")
+    }
+}
+
+// ============================================================
+// CheckoutOptions 测试 - 对齐 gix-worktree-state/src/checkout/mod.rs Options
+// ============================================================
+
+@Test
+func testCheckoutOptionsDefaults(): Unit {
+    let opts = CheckoutOptions()
+    if (opts.unlinkOnCollision) {
+        throw Exception("unlinkOnCollision should default to false")
+    }
+    if (!opts.overwriteExisting) {
+        throw Exception("overwriteExisting should default to true")
+    }
+    if (!opts.keepExecutableBit) {
+        throw Exception("keepExecutableBit should default to true")
+    }
+    if (opts.threadLimit != 0) {
+        throw Exception("threadLimit should default to 0")
+    }
+}
+
+// ============================================================
+// CheckoutError 测试 - 对齐 gix-worktree-state/src/checkout/mod.rs Error
+// ============================================================
+
+@Test
+func testCheckoutErrorVariants(): Unit {
+    let e1 = CheckoutError.Io("read error")
+    let e2 = CheckoutError.FindObject("not found")
+    let e3 = CheckoutError.Filter("filter error")
+    let e4 = CheckoutError.Interrupted
+}

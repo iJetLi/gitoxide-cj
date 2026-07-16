@@ -212,6 +212,30 @@ class ParseCursor {
 
 // ============================================================
 // Pattern — pathspec 模式
+// 属性规格，对齐 Rust: gix_pathspec::parse::signature::attribute::AttributeSpec
+// 表示 attr: 后面的单个属性条件，如 "someAttr"、"!someAttr"、"someAttr=value"
+public class AttributeSpec {
+    // 属性名
+    public var name: String
+    // 属性状态：Set（存在）、Unset（!attr，不存在）、Value（attr=value）
+    public var state: AttributeState
+    // 当 state == Value 时的值
+    public var value: String
+
+    public init(name: String, state: AttributeState, value: String) {
+        this.name = name
+        this.state = state
+        this.value = value
+    }
+}
+
+// 属性状态，对齐 Rust: gix_pathspec::parse::signature::attribute::State
+public enum AttributeState {
+    | Set
+    | Unset
+    | Value
+}
+
 // 对齐 Rust: gix_pathspec::Pattern
 // ============================================================
 
@@ -226,6 +250,9 @@ public class Pattern {
     public var nilPattern: Bool
     // 前缀长度（normalize 后设置）
     public var prefixLen: Int64
+    // 属性规格列表，对齐 Rust: gix_pathspec::Pattern::attributes
+    // 仓颉差异：Rust 用 BString，仓颉用 String
+    public var attributes: ArrayList<AttributeSpec>
 
     public init() {
         path = ""
@@ -233,6 +260,7 @@ public class Pattern {
         searchMode = SearchMode.ShellGlob
         nilPattern = false
         prefixLen = 0
+        attributes = ArrayList<AttributeSpec>()
     }
 
     public init(path: String, signature: MagicSignatureSet, searchMode: SearchMode, nilPattern: Bool) {
@@ -241,6 +269,7 @@ public class Pattern {
         this.searchMode = searchMode
         this.nilPattern = nilPattern
         this.prefixLen = 0
+        attributes = ArrayList<AttributeSpec>()
     }
 
     // 是否为 nil 模式
@@ -433,12 +462,54 @@ func parseLongKeywords(input: String, start: Int64, end: Int64, p: Pattern): ?St
         } else if (trimmed == "attr") {
         // 空属性声明
         } else if (trimmed.startsWith("attr:")) {
-        // 属性解析（简化）
+        // 属性解析，对齐 Rust: gix_pathspec::parse::signature::attribute
+        let attrStr = substringFromStr(trimmed, 5)
+        let parsedAttrs = parseAttributes(attrStr)
+        if (parsedAttrs.isSome()) {
+            p.attributes = parsedAttrs.getOrThrow()
+        }
         } else {
             return Some(trimmed)
         }
     }
     None
+}
+
+// 解析属性字符串，对齐 Rust: gix_pathspec::parse::signature::attribute::parse_attributes
+// 格式：空格分隔的属性，如 "someAttr !otherAttr key=value"
+// 返回值：解析成功返回属性列表，格式错误返回 None
+func parseAttributes(input: String): ?ArrayList<AttributeSpec> {
+    let result = ArrayList<AttributeSpec>()
+    let parts = input.split(" ")
+    for (part in parts) {
+        if (part.size == 0) {
+            continue
+        }
+        if (part[0] == UInt8(0x21)) {
+            // !attr → Unset
+            let name = substringFromStr(part, 1)
+            if (name.size == 0) {
+                return None
+            }
+            result.add(AttributeSpec(name, AttributeState.Unset, ""))
+        } else if (part.contains("=")) {
+            // attr=value → Value
+            let eqIdx = part.indexOf("=")
+            if (eqIdx.isNone() || eqIdx.getOrThrow() == 0 || eqIdx.getOrThrow() >= part.size - 1) {
+                return None
+            }
+            let name = substringStr(part, 0, eqIdx.getOrThrow())
+            let val = substringFromStr(part, eqIdx.getOrThrow() + 1)
+            result.add(AttributeSpec(name, AttributeState.Value, val))
+        } else {
+            // attr → Set
+            result.add(AttributeSpec(part, AttributeState.Set, ""))
+        }
+    }
+    if (result.size == 0) {
+        return None
+    }
+    Some(result)
 }
 
 // ============================================================

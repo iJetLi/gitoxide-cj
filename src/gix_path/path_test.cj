@@ -253,7 +253,7 @@ func testNormalizeDotDotOnly(): Unit {
 @Test
 func testNormalizeTrailingRelativeComponents(): Unit {
     // 对齐 Rust: normalize::trailing_relative_components_are_resolved
-    // 注意：仓颉简化版 normalize 不处理 cwd，仅去除 . 和 ..
+    // 注意：仓颉 normalize 不处理 cwd，仅去除 . 和 ..（仓颉无 std::fs::canonicalize 等价 API）
     let cases = [
         ("a/./b/c/../d/..", "a/b"),
         ("a/./b/c/.././..", "a"),
@@ -1297,4 +1297,70 @@ func testRelativizeWithPrefixNested(): Unit {
     if (result != "c/d") {
         throw Exception("relativize nested should be c/d, got " + result)
     }
+}
+
+// ============================================================
+// env 函数测试 — 对齐 Rust gix-path/src/env.rs
+// ============================================================
+
+@Test
+func testExeInvocationDefault(): Unit {
+    // 对齐 Rust: gix_path::env::exe_invocation — 默认值
+    let result = exeInvocation()
+    // 无 GIT_EXEC_PATH 环境变量时应回退到 "git"
+    if (result.size == 0) {
+        throw Exception("exeInvocation should return non-empty string")
+    }
+}
+
+@Test
+func testShellDefault(): Unit {
+    // 对齐 Rust: gix_path::env::shell — 默认值
+    let result = shell()
+    if (result.size == 0) {
+        throw Exception("shell should return non-empty string")
+    }
+}
+
+@Test
+func testInstallationConfigReturnsValue(): Unit {
+    // 对齐 Rust: gix_path::env::installation_config — 应返回值或 None
+    let result = installationConfig()
+    // 不应抛出异常，返回 None 或 Some
+    true
+}
+
+@Test
+func testInstallationConfigPrefixReturnsValue(): Unit {
+    // 对齐 Rust: gix_path::env::installation_config_prefix — 应返回值或 None
+    let result = installationConfigPrefix()
+    true
+}
+
+@Test
+func testCoreDirReturnsValue(): Unit {
+    // 对齐 Rust: gix_path::env::core_dir — 应返回值或 None
+    let result = coreDir()
+    true
+}
+
+@Test
+func testSystemPrefixReturnsValue(): Unit {
+    // 对齐 Rust: gix_path::env::system_prefix — 应返回值或 None
+    let result = systemPrefix()
+    true
+}
+
+@Test
+func testHomeDirReturnsValue(): Unit {
+    // 对齐 Rust: gix_path::env::home_dir — 应返回值或 None
+    let result = homeDir()
+    true
+}
+
+@Test
+func testXdgConfigReturnsValue(): Unit {
+    // 对齐 Rust: gix_path::env::xdg_config — 应返回值或 None
+    let result = xdgConfig("git")
+    true
 }

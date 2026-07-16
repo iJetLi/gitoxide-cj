@@ -398,7 +398,7 @@ func testConflictInequality(): Unit {
 @Test
 func testConflictIndexEntryCreation(): Unit {
     // 对齐 Rust: gix-status/src/conflict.rs — ConflictIndexEntry 构造
-    let id = ObjectId.fromHex("df967b96a579e45a18b8251732d16804b2e56a55")
+    let id = ObjectId.fromHexOrThrow("df967b96a579e45a18b8251732d16804b2e56a55")
     let entry = ConflictIndexEntry(id, 0x1000, 33188)
     if (entry.id != id) {
         throw Exception("id mismatch")
@@ -414,8 +414,8 @@ func testConflictIndexEntryCreation(): Unit {
 @Test
 func testConflictIndexEntryEquality(): Unit {
     // 对齐 Rust: gix-status/src/conflict.rs — ConflictIndexEntry 相等性
-    let id1 = ObjectId.fromHex("df967b96a579e45a18b8251732d16804b2e56a55")
-    let id2 = ObjectId.fromHex("d244dd0bf67758236f793fd7749a1c814fbfeac4")
+    let id1 = ObjectId.fromHexOrThrow("df967b96a579e45a18b8251732d16804b2e56a55")
+    let id2 = ObjectId.fromHexOrThrow("d244dd0bf67758236f793fd7749a1c814fbfeac4")
     let e1 = ConflictIndexEntry(id1, 0x1000, 33188)
     let e2 = ConflictIndexEntry(id1, 0x1000, 33188)
     let e3 = ConflictIndexEntry(id2, 0x2000, 33188)
@@ -436,7 +436,7 @@ func testConflictIndexEntryEquality(): Unit {
 @Test
 func testEntryStatusConflict(): Unit {
     // 对齐 Rust: gix-status/src/entry_status.rs — EntryStatus::Conflict
-    let id = ObjectId.fromHex("df967b96a579e45a18b8251732d16804b2e56a55")
+    let id = ObjectId.fromHexOrThrow("df967b96a579e45a18b8251732d16804b2e56a55")
     let entries: Array<Option<ConflictIndexEntry>> = [Some(ConflictIndexEntry(id, 0x1000, 33188)),
         None<ConflictIndexEntry>, None<ConflictIndexEntry>]
     let s = EntryStatus.Conflicted(Conflict.BothModified, entries)
@@ -604,7 +604,7 @@ func testStatusSummaryDerivation(): Unit {
         throw Exception("IntentToAdd mismatch")
     }
     // Conflict → Conflict
-    let id = ObjectId.fromHex("df967b96a579e45a18b8251732d16804b2e56a55")
+    let id = ObjectId.fromHexOrThrow("df967b96a579e45a18b8251732d16804b2e56a55")
     if (entryStatusSummary(
         EntryStatus.Conflicted(Conflict.BothAdded,
             [Some(ConflictIndexEntry(id, 0x1000, 33188)), None<ConflictIndexEntry>, None<ConflictIndexEntry>])) != StatusSummary
@@ -795,5 +795,104 @@ func testRewriteOutcomeDefaults(): Unit {
     }
     if (ro.trackedFileModification.entriesProcessed != 42) {
         throw Exception("entriesProcessed should be 42")
+    }
+}
+
+
+// ============================================================
+// StatusError 测试 - 对齐 gix-status/src/index_as_worktree/types.rs Error
+// ============================================================
+
+@Test
+func testStatusErrorVariants(): Unit {
+    let e1 = StatusError.IllformedUtf8
+    let e2 = StatusError.Time("clock error")
+    let e3 = StatusError.Io("io error")
+    let e4 = StatusError.Find("not found")
+    let e5 = StatusError.SubmoduleStatus("sub/path", "submodule error")
+    match (e1) {
+        case StatusError.IllformedUtf8 => true;
+        case _ => throw Exception("should be IllformedUtf8")
+    }
+    match (e2) {
+        case StatusError.Time(msg) =>
+            if (msg != "clock error") {
+                throw Exception("message mismatch")
+            }
+        case _ => throw Exception("should be Time")
+    }
+}
+
+// ============================================================
+// RenameStatusError 测试 - 对齐 gix-status/src/index_as_worktree_with_renames/types.rs Error
+// ============================================================
+
+@Test
+func testRenameStatusErrorVariants(): Unit {
+    let e1 = RenameStatusError.DirWalk("walk error")
+    let e2 = RenameStatusError.SpawnThread("spawn error")
+    let e3 = RenameStatusError.TrackedFileModifications(StatusError.Io("io"))
+    let e4 = RenameStatusError.SetAttributeContext("attr error")
+    let e5 = RenameStatusError.OpenWorktreeFile("open error")
+    let e6 = RenameStatusError.HashFile("hash error")
+    let e7 = RenameStatusError.ReadLink("link error")
+    let e8 = RenameStatusError.ConvertToGit("convert error")
+    let e9 = RenameStatusError.RewriteTracker("tracker error")
+    match (e1) {
+        case RenameStatusError.DirWalk(msg) =>
+            if (msg != "walk error") {
+                throw Exception("message mismatch")
+            }
+        case _ => throw Exception("should be DirWalk")
+    }
+    match (e3) {
+        case RenameStatusError.TrackedFileModifications(inner) =>
+            match (inner) {
+                case StatusError.Io(_) => true;
+                case _ => throw Exception("inner should be Io")
+            }
+        case _ => throw Exception("should be TrackedFileModifications")
+    }
+}
+
+// ============================================================
+// FsCapabilities 测试 - 对齐 gix-status/src/index_as_worktree/types.rs fs::Capabilities
+// ============================================================
+
+@Test
+func testFsCapabilitiesDefaults(): Unit {
+    let caps = FsCapabilities()
+    if (!caps.caseSensitive) {
+        throw Exception("caseSensitive should default to true")
+    }
+    if (!caps.symlink) {
+        throw Exception("symlink should default to true")
+    }
+    if (!caps.executableBit) {
+        throw Exception("executableBit should default to true")
+    }
+    if (caps.precomposeUnicode) {
+        throw Exception("precomposeUnicode should default to false")
+    }
+}
+
+@Test
+func testFsCapabilitiesModified(): Unit {
+    let caps = FsCapabilities()
+    caps.caseSensitive = false
+    caps.symlink = false
+    caps.executableBit = false
+    caps.precomposeUnicode = true
+    if (caps.caseSensitive) {
+        throw Exception("caseSensitive should be false")
+    }
+    if (caps.symlink) {
+        throw Exception("symlink should be false")
+    }
+    if (caps.executableBit) {
+        throw Exception("executableBit should be false")
+    }
+    if (!caps.precomposeUnicode) {
+        throw Exception("precomposeUnicode should be true")
     }
 }

@@ -166,7 +166,7 @@ public func computeHash(hashKind: HashKind, objectKind: ObjectKind, data: Array<
 // 参数 start：起始位置（含）
 // 参数 end：结束位置（不含）
 // 返回值：截取得到的新字节数组
-func sliceBytes2(data: Array<Byte>, start: Int64, end: Int64): Array<Byte> {
+public func sliceBytes2(data: Array<Byte>, start: Int64, end: Int64): Array<Byte> {
     var result = ArrayList<Byte>()
     var i = start
     while (i < end && i < data.size) {

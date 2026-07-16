@@ -277,7 +277,7 @@ func containsShellMetaChars(s: String): Bool {
 
 // 检测字符串是否包含阻止手动参数拆分的字符
 // 对齐 Rust: From<Prepare> for Command 中 find_byteset(b"\\|&;<>()$`\n*?[#~%")
-func containsShellSplitBlockingChars(s: String): Bool {
+public func containsShellSplitBlockingChars(s: String): Bool {
     var i: Int64 = 0
     while (i < s.size) {
         var b = s[i]

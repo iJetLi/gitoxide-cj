@@ -143,7 +143,7 @@ public class PackedEntry {
     // 将条目转换为目标引用类型
     // 返回值：Target.Object 实例
     public func toTarget(): Target {
-        Target.Object(ObjectId.fromHex(targetHex))
+        Target.Object(ObjectId.fromHexOrThrow(targetHex))
     }
 }
 

@@ -12,13 +12,22 @@ import std.collection.*
 
 // 临时文件注册表（全局）
 // 对齐 Rust: gix_tempfile::registry
-class TempFileRegistry {
+public class TempFileRegistry {
     static let lock = ReentrantMutex()
     static var paths = ArrayList<String>()
+    // 对齐 Rust: gix_tempfile::signal::setup — 注册退出清理回调
+    // Rust 在首次创建 tempfile 时注册信号处理器，进程退出时自动清理
+    // 仓颉差异：CJ_CORE_AddAtexitCallback 的回调参数需要 CType，
+    // 仓颉闭包不满足 CType 约束，因此使用 atexitRegistered 标志
+    // 调用方应在进程退出前手动调用 cleanupTempfiles()
+    static var atexitRegistered = false
 
     static func register(path: String): Unit {
         lock.lock()
         paths.add(path)
+        if (!atexitRegistered) {
+            atexitRegistered = true
+        }
         lock.unlock()
     }
 

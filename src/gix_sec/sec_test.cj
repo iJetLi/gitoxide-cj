@@ -154,7 +154,7 @@ func testTrustAllVariantsDistinct(): Unit {
 @Test
 func testIdentityIsPathOwnedByCurrentUser(): Unit {
     // 对齐 Rust: identity::is_path_owned_by_current_user
-    // 仓颉简化：验证 Identity 可以构造并访问
+    // 仓颉：验证 Identity 可以构造并访问（仓颉无 getuid()/getpwuid() 等价 API）
     let id = Identity(1000)
     if (id.uid != 1000) {
         throw Exception("uid should be 1000")

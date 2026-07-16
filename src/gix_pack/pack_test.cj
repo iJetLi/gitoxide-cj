@@ -38,7 +38,7 @@ func testCacheCreation(): Unit {
 func testCachePutAndGet(): Unit {
     // 对齐 Rust: Cache::put + get
     let cache = Cache(100)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let data: Array<Byte> = [UInt8(1), UInt8(2), UInt8(3)]
     cache.put(id, data)
     let result = cache.get(id)
@@ -55,7 +55,7 @@ func testCachePutAndGet(): Unit {
 func testCacheGetNonExistent(): Unit {
     // 对齐 Rust: Cache::get — 不存在的条目
     let cache = Cache(100)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (cache.get(id).isSome()) {
         throw Exception("cache get for non-existent key should return None")
     }
@@ -65,9 +65,9 @@ func testCacheGetNonExistent(): Unit {
 func testCacheMaxSize(): Unit {
     // 对齐 Rust: Cache::max_size — 超出容量时淘汰
     let cache = Cache(2)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
-    let id3 = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
+    let id3 = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     cache.put(id1, [UInt8(1)])
     cache.put(id2, [UInt8(2)])
     if (cache.entries.size != 2) {
@@ -83,7 +83,7 @@ func testCacheMaxSize(): Unit {
 func testCacheClear(): Unit {
     // 对齐 Rust: Cache::clear
     let cache = Cache(100)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     cache.put(id, [UInt8(1)])
     cache.clear()
     if (cache.entries.size != 0) {
@@ -95,7 +95,7 @@ func testCacheClear(): Unit {
 func testCacheOverwrite(): Unit {
     // 对齐 Rust: Cache::put — 覆盖已有条目
     let cache = Cache(100)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     cache.put(id, [UInt8(1)])
     cache.put(id, [UInt8(2), UInt8(3)])
     let result = cache.get(id)
@@ -224,7 +224,7 @@ func testDeltaSizeMismatchFails(): Unit {
 @Test
 func testIndexEntryCreation(): Unit {
     // 对齐 Rust: IndexEntry::new(oid, pack_offset)
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry(oid, 256)
     if (entry.packOffset != 256) {
         throw Exception("packOffset should be 256")
@@ -234,7 +234,7 @@ func testIndexEntryCreation(): Unit {
 @Test
 func testIndexEntryZeroOffset(): Unit {
     // 对齐 Rust: IndexEntry with offset 0
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry(oid, 0)
     if (entry.packOffset != 0) {
         throw Exception("packOffset should be 0")
@@ -279,7 +279,7 @@ func testPackEntryNoKind(): Unit {
 @Test
 func testPackObjectCreation(): Unit {
     // 对齐 Rust: PackObject 构造
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let obj = PackObject(id, ObjectKind.Blob, "hello".toArray(), OutputEntryKind.Base(ObjectKind.Blob), [])
     if (obj.kind != ObjectKind.Blob) {
         throw Exception("PackObject kind should be Blob")
@@ -410,7 +410,7 @@ func testIndexFileV2Version(): Unit {
 func testCachePutSameKeyOverwrite(): Unit {
     // 对齐 Rust: Cache — 相同 key 覆盖
     let cache = Cache(10)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     cache.put(id, [UInt8(1)])
     cache.put(id, [UInt8(2), UInt8(3), UInt8(4)])
     let result = cache.get(id)
@@ -427,7 +427,7 @@ func testCachePutSameKeyOverwrite(): Unit {
 func testCacheMaxSizeZero(): Unit {
     // 对齐 Rust: Cache — maxSize=0 不缓存
     let cache = Cache(0)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     cache.put(id, [UInt8(1)])
     if (cache.entries.size != 0) {
         throw Exception("cache with maxSize=0 should not store entries")
@@ -441,9 +441,9 @@ func testCacheMaxSizeZero(): Unit {
 func testCacheMultipleKeys(): Unit {
     // 对齐 Rust: Cache — 多 key
     let cache = Cache(100)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
-    let id3 = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf899d15363d7b82d")
+    let id3 = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     cache.put(id1, [UInt8(1)])
     cache.put(id2, [UInt8(2)])
     cache.put(id3, [UInt8(3)])
@@ -577,7 +577,7 @@ func testDeltaApplyInsertMultipleCommands(): Unit {
 @Test
 func testIndexEntryComparison(): Unit {
     // 对齐 Rust: IndexEntry — 比较
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry(oid, 100)
     let e2 = IndexEntry(oid, 200)
     if (e1.oid.toHexString() != e2.oid.toHexString()) {
@@ -591,7 +591,7 @@ func testIndexEntryComparison(): Unit {
 @Test
 func testIndexEntryLargeOffset(): Unit {
     // 对齐 Rust: IndexEntry — 大偏移量
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry(oid, 4294967295) // max u32
     if (entry.packOffset != 4294967295) {
         throw Exception("large offset should be preserved")
@@ -669,7 +669,7 @@ func testIndexWriterWriteCreatesFile(): Unit {
     let idxPath = testDir + "/test.idx"
     let writer = IndexWriter(HashKind.Sha1)
     let entries = ArrayList<IndexEntry>()
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     entries.add(IndexEntry(oid, 12))
     writer.write(entries, idxPath)
     if (!exists(idxPath)) {
@@ -687,9 +687,9 @@ func testIndexWriterWriteMultipleEntries(): Unit {
     let idxPath = testDir + "/test.idx"
     let writer = IndexWriter(HashKind.Sha1)
     let entries = ArrayList<IndexEntry>()
-    entries.add(IndexEntry(ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"), 12))
-    entries.add(IndexEntry(ObjectId.fromHex("4b825dc642cb6eb9a060e54bf899d15363d7b82d"), 200))
-    entries.add(IndexEntry(ObjectId.fromHex("0000000000000000000000000000000000000000"), 500))
+    entries.add(IndexEntry(ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"), 12))
+    entries.add(IndexEntry(ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf899d15363d7b82d"), 200))
+    entries.add(IndexEntry(ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000"), 500))
     writer.write(entries, idxPath)
     if (!exists(idxPath)) {
         throw Exception("index file should be created after write")
@@ -731,7 +731,7 @@ func testBundleTryFindNonExistent(): Unit {
     let idx = IndexFile("/tmp/test.idx", HashKind.Sha1)
     let dat = DataFile("/tmp/test.pack", HashKind.Sha1)
     let bundle = Bundle(idx, dat, HashKind.Sha1)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let findResult = bundle.tryFindData(id)
     if (findResult.isOk()) {
         if (findResult.unwrap().isSome()) {
@@ -813,7 +813,7 @@ func testIndexFileAtNonExistent(): Unit {
 func testIndexFileLookupNonExistent(): Unit {
     // 对齐 Rust: IndexFile::lookup — 不存在的对象
     let idx = IndexFile("/tmp/test.idx", HashKind.Sha1)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (idx.lookup(id).isSome()) {
         throw Exception("IndexFile lookup for non-existent object should return None")
     }
@@ -1002,7 +1002,7 @@ func testKindToPackTypeAllKinds(): Unit {
 @Test
 func testPackObjectWithDifferentKinds(): Unit {
     // 对齐 Rust: PackObject — 不同类型
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let blob = PackObject(id, ObjectKind.Blob, "blob data".toArray(), OutputEntryKind.Base(ObjectKind.Blob), [])
     let tree = PackObject(id, ObjectKind.Tree, "tree data".toArray(), OutputEntryKind.Base(ObjectKind.Tree), [])
     let commit = PackObject(id, ObjectKind.Commit, "commit data".toArray(), OutputEntryKind.Base(ObjectKind.Commit), [])
@@ -1024,7 +1024,7 @@ func testPackObjectWithDifferentKinds(): Unit {
 @Test
 func testPackObjectEmptyData(): Unit {
     // 对齐 Rust: PackObject — 空数据
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let obj = PackObject(id, ObjectKind.Blob, Array<Byte>(), OutputEntryKind.Base(ObjectKind.Blob), [])
     if (obj.data.size != 0) {
         throw Exception("empty data should have size 0")
@@ -1034,7 +1034,7 @@ func testPackObjectEmptyData(): Unit {
 @Test
 func testPackObjectLargeData(): Unit {
     // 对齐 Rust: PackObject — 大数据
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let data = Array<Byte>(10000, repeat: UInt8(65))
     let obj = PackObject(id, ObjectKind.Blob, data, OutputEntryKind.Base(ObjectKind.Blob), [])
     if (obj.data.size != 10000) {
@@ -1172,7 +1172,7 @@ func testDeltaApplyCopyFromBaseZeroOffset(): Unit {
     // 指令: copy offset=0 size=2 (0x81 = bit7 set + bit0 set → offset byte 0, no size bytes → size=0 → 0x10000)
     // 使用简单指令: copy offset=0 size=2 → cmd=0x81, offset_byte=0, size_byte=2
     // cmd=0x80|0x01=0x81 (offset byte present), offset=0, cmd=0x80|0x10=0x90 (size byte present), size=2
-    // 简化：用 insert 指令
+    // 对齐 Rust: gix-pack::data::entry::decode — 用 insert 指令
     let instructions: Array<Byte> = [UInt8(2), UInt8(0xAA), UInt8(0xBB)]
     let delta = Delta(3, 2, instructions)
     let result = delta.apply(base)
@@ -1431,7 +1431,7 @@ func testPackHeaderLargeSizeRoundTrip(): Unit {
 @Test
 func testIndexEntryEquality(): Unit {
     // 对齐 Rust: index::entry_equality — IndexEntry 相等性
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry1 = IndexEntry(id, 0)
     let entry2 = IndexEntry(id, 0)
     if (entry1.oid.toHexString() != entry2.oid.toHexString()) {
@@ -1445,7 +1445,7 @@ func testIndexEntryEquality(): Unit {
 @Test
 func testIndexEntryDifferentOffsets(): Unit {
     // 对齐 Rust: index::entry_different_offsets — 不同偏移的 IndexEntry
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry1 = IndexEntry(id, 0)
     let entry2 = IndexEntry(id, 100)
     if (entry1.packOffset == entry2.packOffset) {
@@ -1461,9 +1461,9 @@ func testIndexEntryDifferentOffsets(): Unit {
 func testCacheEvictionWhenFull(): Unit {
     // 对齐 Rust: Cache::eviction — 缓存满时淘汰旧条目
     let cache = Cache(2)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
-    let id3 = ObjectId.fromHex("9556057aee5abb06912922e9f26c46386a816822")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let id3 = ObjectId.fromHexOrThrow("9556057aee5abb06912922e9f26c46386a816822")
     let data: Array<Byte> = [UInt8(1)]
     cache.put(id1, data)
     cache.put(id2, data)
@@ -1478,7 +1478,7 @@ func testCacheEvictionWhenFull(): Unit {
 func testCacheOverwriteSameKey(): Unit {
     // 对齐 Rust: Cache::overwrite — 覆盖同一键
     let cache = Cache(100)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     cache.put(id, [UInt8(1)])
     cache.put(id, [UInt8(2), UInt8(3)])
     let result = cache.get(id)
@@ -1569,7 +1569,7 @@ func testIndexWriterWriteV2(): Unit {
     // 对齐 Rust: index writer — 写入索引文件
     let writer = IndexWriter(HashKind.Sha1)
     let entries = ArrayList<IndexEntry>()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     entries.add(IndexEntry(id, 12))
     writer.write(entries, "/tmp/test-index-write-v2.idx")
     // 写入操作不应崩溃
@@ -1692,8 +1692,8 @@ func testDeltaFromBytesLargeResultSize(): Unit {
 func testCacheMaxSizeOne(): Unit {
     // 对齐 Rust: cache — maxSize=1 只保留一个条目
     let cache = Cache(1)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     cache.put(id1, "data1".toArray())
     cache.put(id2, "data2".toArray())
     // id1 应仍在缓存（put 不淘汰旧条目，只是不再添加新条目）
@@ -1709,13 +1709,13 @@ func testCacheMaxSizeOne(): Unit {
 func testCacheClearThenPut(): Unit {
     // 对齐 Rust: cache — clear 后可以重新 put
     let cache = Cache(1)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     cache.put(id1, "data1".toArray())
     cache.clear()
     if (!cache.get(id1).isNone()) {
         throw Exception("id1 should be gone after clear")
     }
-    let id2 = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let id2 = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     cache.put(id2, "data2".toArray())
     if (cache.get(id2).isNone()) {
         throw Exception("id2 should be in cache after clear+put")
@@ -1856,7 +1856,7 @@ func testPackWriterMultipleKinds(): Unit {
 @Test
 func testIndexEntryNegativeOffset(): Unit {
     // 对齐 Rust: index entry — 负偏移量（边界值）
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry(id, -1)
     if (entry.packOffset != -1) {
         throw Exception("negative offset should be preserved")
@@ -1866,7 +1866,7 @@ func testIndexEntryNegativeOffset(): Unit {
 @Test
 func testIndexEntryMaxOffset(): Unit {
     // 对齐 Rust: index entry — 最大偏移量
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let maxVal: Int64 = 9223372036854775807
     let entry = IndexEntry(id, maxVal)
     if (entry.packOffset != maxVal) {
@@ -1981,7 +1981,7 @@ func testEntryHeaderOfsDelta(): Unit {
 @Test
 func testEntryHeaderRefDelta(): Unit {
     // 对齐 Rust: Header::RefDelta
-    let baseId = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let baseId = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let h = EntryHeader.RefDelta(baseId)
     if (h.asTypeId() != 7) {
         throw Exception("RefDelta type id should be 7")
@@ -2268,7 +2268,7 @@ func testEntryFromBytesRefDelta(): Unit {
     // 后跟 20 字节的 ObjectId
     var data = ArrayList<Byte>()
     data.add(UInt8(0x70))
-    let baseId = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let baseId = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     for (b in baseId.bytes) {
         data.add(b)
     }
@@ -2476,7 +2476,7 @@ func testEncodeEntryHeaderOfsDelta(): Unit {
 @Test
 func testEncodeEntryHeaderRefDelta(): Unit {
     // 对齐 Rust: Header::write_to — RefDelta
-    let baseId = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let baseId = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let result = encodeEntryHeader(EntryHeader.RefDelta(baseId), 0)
     // 0x70 = (7 << 4) | 0, then 20 bytes of ObjectId
     if (result.size != 21) {
@@ -2837,7 +2837,7 @@ func testIndexVersionV2(): Unit {
 
 @Test
 func testIndexEntryWithCrc32(): Unit {
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry(oid, 256, Some(12345))
     if (entry.crc32.isNone()) {
         throw Exception("crc32 should be Some")
@@ -2849,7 +2849,7 @@ func testIndexEntryWithCrc32(): Unit {
 
 @Test
 func testIndexEntryWithoutCrc32(): Unit {
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry(oid, 256)
     if (entry.crc32.isSome()) {
         throw Exception("crc32 should be None by default")
@@ -2988,7 +2988,7 @@ func testTraverseStatisticsDefaults(): Unit {
 
 @Test
 func testIntegrityOutcomeCreation(): Unit {
-    let checksum = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let checksum = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let outcome = IntegrityOutcome(checksum, None)
     if (!outcome.actualIndexChecksum.equals(checksum)) {
         throw Exception("checksum should match")
@@ -3477,7 +3477,7 @@ func testLookupExistingOid(): Unit {
     }
     let i = idx.unwrap()
 
-    let oid1 = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let oid1 = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     let result1 = i.lookup(oid1)
     if (result1.isNone()) {
         throw Exception("lookup should find existing OID 1b2dfb...")
@@ -3486,7 +3486,7 @@ func testLookupExistingOid(): Unit {
         throw Exception("lookup result for 1b2dfb... should be 0, got " + result1.getOrThrow().toString())
     }
 
-    let oid2 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid2 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let result2 = i.lookup(oid2)
     if (result2.isNone()) {
         throw Exception("lookup should find existing OID e69de2...")
@@ -3512,7 +3512,7 @@ func testLookupNonExistentOid(): Unit {
     }
     let i = idx.unwrap()
 
-    let notExist = ObjectId.fromHex("ffffffffffffffffffffffffffffffffffffffff")
+    let notExist = ObjectId.fromHexOrThrow("ffffffffffffffffffffffffffffffffffffffff")
     let result = i.lookup(notExist)
     if (!result.isNone()) {
         throw Exception("lookup for non-existent OID should return None")
@@ -3597,7 +3597,7 @@ func testPrefixLookupUnique(): Unit {
     let i = idx.unwrap()
 
     // 用 7 字节前缀查找（唯一匹配）
-    let prefixId = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let prefixId = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     let prefix = Prefix(prefixId, 14) // 14 hex chars = 7 bytes
     let result = i.lookupPrefix(prefix)
     if (result.isNone()) {
@@ -3628,7 +3628,7 @@ func testPrefixLookupNoMatch(): Unit {
     }
     let i = idx.unwrap()
 
-    let prefixId = ObjectId.fromHex("ffffffffffffffffffffffffffffffffffffffff")
+    let prefixId = ObjectId.fromHexOrThrow("ffffffffffffffffffffffffffffffffffffffff")
     let prefix = Prefix(prefixId, 40)
     let result = i.lookupPrefix(prefix)
     if (!result.isNone()) {
@@ -3769,8 +3769,8 @@ func testVerifyFanoutValid(): Unit {
 func testIndexWriterRoundTrip(): Unit {
     let writer = IndexWriter(HashKind.Sha1)
     var entries = ArrayList<IndexEntry>()
-    let id1 = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
-    let id2 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id1 = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let id2 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     entries.add(IndexEntry(id1, 12, Some(0x11111111)))
     entries.add(IndexEntry(id2, 256, Some(0x22222222)))
 
@@ -3811,7 +3811,7 @@ func testIndexWriterRoundTrip(): Unit {
 func testIndexWriterLargeOffset(): Unit {
     let writer = IndexWriter(HashKind.Sha1)
     var entries = ArrayList<IndexEntry>()
-    let id1 = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let id1 = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
     let largeOffset: Int64 = 0x100000000 // 4GB，超过 LARGE_OFFSET_THRESHOLD
     entries.add(IndexEntry(id1, largeOffset, Some(0)))
 
@@ -3887,7 +3887,7 @@ func testNormalOffsetFrom4ByteTable(): Unit {
 }
 
 // ============================================================
-// T047: traverse 统计测试 — 对齐 US7（简化版，无真实 pack 数据）
+// T047: traverse 统计测试 — 对齐 US7（无真实 pack 数据，用模拟索引验证）
 // ============================================================
 
 @Test
@@ -3980,8 +3980,8 @@ func testEntryAtOutOfRange(): Unit {
 @Test
 func testIndexWriterFanoutStatic(): Unit {
     var entries = ArrayList<IndexEntry>()
-    let id1 = ObjectId.fromHex("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
-    let id2 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id1 = ObjectId.fromHexOrThrow("1b2dfb4ac5e42080b682fc676e9738c94ce6d54d")
+    let id2 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     entries.add(IndexEntry(id1, 0))
     entries.add(IndexEntry(id2, 0))
 
@@ -4067,7 +4067,7 @@ func testFromOffsetsErrorKinds(): Unit {
         throw Exception("Interrupted message: " + err2.message)
     }
 
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let err3 = FromOffsetsError(FromOffsetsErrorKind.UnresolvedRefDelta(id))
     if (!err3.message.contains("e69de29")) {
         throw Exception("UnresolvedRefDelta message: " + err3.message)
@@ -4967,7 +4967,7 @@ func testPackLocationLookedUpNone(): Unit {
 @Test
 func testOutputCountFromData(): Unit {
     // 对齐 Rust: data::output::Count::from_data()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let loc = EntryLocation(0, 50, 12)
     let count = OutputCount.fromData(id, Some(loc))
     if (!count.id.equals(id)) {
@@ -5007,7 +5007,7 @@ func testOutputEntryInvalid(): Unit {
 @Test
 func testOutputEntryFromData(): Unit {
     // 对齐 Rust: output::Entry::from_data()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let count = OutputCount(id, PackLocation.NotLookedUp)
     let entry = OutputEntry.fromData(count, ObjectKind.Blob, [UInt8(1), UInt8(2), UInt8(3)])
     if (entry.isInvalid()) {
@@ -5030,7 +5030,7 @@ func testOutputEntryFromData(): Unit {
 @Test
 func testOutputEntryToEntryHeaderBase(): Unit {
     // 对齐 Rust: output::Entry::to_entry_header() — Base 类型
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = OutputEntry(id, OutputEntryKind.Base(ObjectKind.Commit), 10, [UInt8(0)])
     let header = entry.toEntryHeader({_ => 0})
     if (header != EntryHeader.Commit) {
@@ -5041,7 +5041,7 @@ func testOutputEntryToEntryHeaderBase(): Unit {
 @Test
 func testOutputEntryToEntryHeaderDeltaRef(): Unit {
     // 对齐 Rust: output::Entry::to_entry_header() — DeltaRef 类型
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = OutputEntry(id, OutputEntryKind.DeltaRef(0), 10, [UInt8(0)])
     let header = entry.toEntryHeader({
         idx => if (idx == 0) {
@@ -5058,8 +5058,8 @@ func testOutputEntryToEntryHeaderDeltaRef(): Unit {
 @Test
 func testOutputEntryToEntryHeaderDeltaOid(): Unit {
     // 对齐 Rust: output::Entry::to_entry_header() — DeltaOid 类型
-    let baseId = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let baseId = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = OutputEntry(id, OutputEntryKind.DeltaOid(baseId), 10, [UInt8(0)])
     let header = entry.toEntryHeader({_ => 0})
     match (header) {
@@ -5075,8 +5075,8 @@ func testOutputEntryToEntryHeaderDeltaOid(): Unit {
 func testFromEntriesIterWriteEntries(): Unit {
     // 对齐 Rust: data::output::bytes::FromEntriesIter
     let iter = FromEntriesIter(Version.V2, HashKind.Sha1)
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     let entries = ArrayList<OutputEntry>()
     entries.add(OutputEntry(id1, OutputEntryKind.Base(ObjectKind.Blob), 3, deflate([UInt8(1), UInt8(2), UInt8(3)]).data))
     entries.add(OutputEntry(id2, OutputEntryKind.Base(ObjectKind.Commit), 2, deflate([UInt8(4), UInt8(5)]).data))
@@ -5101,7 +5101,7 @@ func testFromEntriesIterInvalidEntry(): Unit {
     let iter = FromEntriesIter(Version.V2, HashKind.Sha1)
     let entries = ArrayList<OutputEntry>()
     entries.add(OutputEntry.invalid())
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     entries.add(OutputEntry(id1, OutputEntryKind.Base(ObjectKind.Blob), 3, deflate([UInt8(1), UInt8(2), UInt8(3)]).data))
 
     let written = iter.writeEntries(entries, 2)
@@ -6273,7 +6273,7 @@ func testMemoryCappedObjectCache(): Unit {
     // 对齐 Rust: gix-pack/src/cache/object.rs MemoryCappedHashmap
     let cache = MemoryCappedObjectCache(200)
     let id1 = ObjectId.null(HashKind.Sha1)
-    let id2 = ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567")
+    let id2 = ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567")
 
     // 存入条目
     let data = Array<Byte>(50, repeat: UInt8(65))
@@ -6860,7 +6860,7 @@ func testPackWriterOfsDeltaObject(): Unit {
 func testPackWriterRefDeltaObject(): Unit {
     // 对齐 Rust: Kind::DeltaOid — RefDelta 写入
     let writer = PackWriter(HashKind.Sha1)
-    let baseId = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let baseId = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let deltaData = Delta.encode("base".toArray(), "base modified".toArray())
     writer.addRefDeltaObject(baseId, deltaData)
     let encoded = writer.encode()
@@ -7071,7 +7071,7 @@ func testOfsDeltaEncodedTypeId(): Unit {
             foundOfsDelta = true
             break
         }
-        // 跳过当前条目（简化：只检查第一个字节）
+        // 跳过当前条目（对齐 Rust: gix-pack::data::input::entry — 只检查第一个字节）
         i += 1
     }
     if (!foundOfsDelta) {
@@ -7128,7 +7128,7 @@ func testOfsDeltaLargeOffsetDistance(): Unit {
 @Test
 func testRefDeltaEncodedTypeId(): Unit {
     // 对齐 Rust: RefDelta type_id = 7
-    let header = EntryHeader.RefDelta(ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+    let header = EntryHeader.RefDelta(ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
     let bytes = encodeEntryHeader(header, 10)
     // 变长头部第一字节: (type_id << 4) | (size & 0x0F) = (7 << 4) | (10 & 0x0F) = 0x7A
     if (Int64(bytes[0]) != 0x7A) {
@@ -7139,7 +7139,7 @@ func testRefDeltaEncodedTypeId(): Unit {
 @Test
 func testRefDeltaObjectIdEncoding(): Unit {
     // 对齐 Rust: RefDelta 后跟 20 字节 ObjectId
-    let baseId = ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567")
+    let baseId = ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567")
     let header = EntryHeader.RefDelta(baseId)
     let bytes = encodeEntryHeader(header, 5)
     // 第一字节: (7<<4)|5 = 0x75
@@ -7163,7 +7163,7 @@ func testRefDeltaObjectIdEncoding(): Unit {
 func testRefDeltaFullPackEncoding(): Unit {
     // 对齐 Rust: 完整 pack 中 RefDelta 条目的 ObjectId 可正确回读
     let writer = PackWriter(HashKind.Sha1)
-    let baseId = ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567")
+    let baseId = ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567")
     let deltaData = Delta.encode("base".toArray(), "base modified".toArray())
     writer.addRefDeltaObject(baseId, deltaData)
     let encoded = writer.encode()
@@ -7979,8 +7979,8 @@ func testOutputEntryKindEquivalence(): Unit {
         throw Exception("DeltaRef(0) should not equal DeltaRef(1)")
     }
     // DeltaOid 等价性
-    let id1 = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let id2 = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let id1 = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id2 = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
     if (OutputEntryKind.DeltaOid(id1) != OutputEntryKind.DeltaOid(id1)) {
         throw Exception("DeltaOid(id1) should equal DeltaOid(id1)")
     }
@@ -8004,7 +8004,7 @@ func testOutputEntryInvalidDetection(): Unit {
         throw Exception("null ObjectId entry should be invalid")
     }
     let valid = OutputEntry(
-        ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+        ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
         OutputEntryKind.Base(ObjectKind.Blob),
         5,
         "hello".toArray()
@@ -8044,7 +8044,7 @@ func testDataFileChecksumAligned(): Unit {
     let hasher = GixHasher(HashKind.Sha1)
     hasher.update(headerBytes)
     let hashHex = hasher.tryFinalize().toHexString()
-    let hashId = ObjectId.fromHex(hashHex)
+    let hashId = ObjectId.fromHexOrThrow(hashHex)
     for (b in hashId.bytes) {
         packData.add(b)
     }
@@ -8081,7 +8081,7 @@ func testDataFileVerifyChecksum(): Unit {
     let hasher2 = GixHasher(HashKind.Sha1)
     hasher2.update(headerBytes)
     let hashHex2 = hasher2.tryFinalize().toHexString()
-    let hashId2 = ObjectId.fromHex(hashHex2)
+    let hashId2 = ObjectId.fromHexOrThrow(hashHex2)
     for (b in hashId2.bytes) {
         packData.add(b)
     }
@@ -8147,7 +8147,7 @@ func testBundleLocateBlob(): Unit {
     let hasher3 = GixHasher(HashKind.Sha1)
     hasher3.update(headerBytes)
     let hashHex3 = hasher3.tryFinalize().toHexString()
-    let hashId3 = ObjectId.fromHex(hashHex3)
+    let hashId3 = ObjectId.fromHexOrThrow(hashHex3)
     for (b in hashId3.bytes) {
         packData.add(b)
     }
@@ -8169,7 +8169,7 @@ func testBundleLocateBlob(): Unit {
 
     let bundle = Bundle(idxResult.unwrap(), df.unwrap(), HashKind.Sha1)
     // 空 bundle 的 tryFind 应返回 None 或错误
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let result = bundle.tryFind(id, ArrayList<Byte>())
     if (result.isOk()) {
         let data = result.unwrap()
@@ -8330,7 +8330,7 @@ func testIndexV2Lookup(): Unit {
     let index = idx.unwrap()
 
     // 查找存在的对象
-    let id0 = ObjectId.fromHex("0ead45fc727edcf5cadca25ef922284f32bb6fc1")
+    let id0 = ObjectId.fromHexOrThrow("0ead45fc727edcf5cadca25ef922284f32bb6fc1")
     let lookup0 = index.lookup(id0)
     if (lookup0.isNone()) {
         throw Exception("should find first object")
@@ -8340,7 +8340,7 @@ func testIndexV2Lookup(): Unit {
     }
 
     // 查找不存在的对象
-    let missingId = ObjectId.fromHex("ffffffffffffffffffffffffffffffffffffffff")
+    let missingId = ObjectId.fromHexOrThrow("ffffffffffffffffffffffffffffffffffffffff")
     let lookupMissing = index.lookup(missingId)
     if (lookupMissing.isSome()) {
         throw Exception("should not find missing object")
@@ -8442,7 +8442,7 @@ func testMultiIndexLookupWithAmbiguity(): Unit {
     // 构造空 multi-index
     let mi = MultiIndexFile("/tmp/test-midx.midx")
     // 空 multi-index，lookup 应返回 None
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let result = mi.lookup(id)
     if (result.isSome()) {
         throw Exception("empty multi-index should not find any object")
@@ -8533,7 +8533,7 @@ func testBytesToEntriesIterGenericIteration(): Unit {
     let hasher4 = GixHasher(HashKind.Sha1)
     hasher4.update(headerBytes)
     let hashHex4 = hasher4.tryFinalize().toHexString()
-    let hashId4 = ObjectId.fromHex(hashHex4)
+    let hashId4 = ObjectId.fromHexOrThrow(hashHex4)
     for (b in hashId4.bytes) {
         packData.add(b)
     }
@@ -8615,7 +8615,7 @@ func testIndexV2LookupFromFixture(): Unit {
         throw Exception("lookup should find last object ${lastEntry.oid.toHexString()}")
     }
     // 查找不存在的对象
-    let fakeId = ObjectId.fromHex("ffffffffffffffffffffffffffffffffffffffff")
+    let fakeId = ObjectId.fromHexOrThrow("ffffffffffffffffffffffffffffffffffffffff")
     let fakeLookup = idx.lookup(fakeId)
     if (fakeLookup.isSome()) {
         throw Exception("lookup should not find fake object")
@@ -9003,7 +9003,7 @@ func testFromEntriesIterWriteEntriesWithBaseAndDelta(): Unit {
     let compressed1 = deflate([UInt8(1), UInt8(2), UInt8(3)])
     entries.add(
         OutputEntry(
-            ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
             OutputEntryKind.Base(ObjectKind.Blob),
             3,
             compressed1.data
@@ -9012,7 +9012,7 @@ func testFromEntriesIterWriteEntriesWithBaseAndDelta(): Unit {
     let compressed2 = deflate([UInt8(4), UInt8(5), UInt8(6)])
     entries.add(
         OutputEntry(
-            ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
             OutputEntryKind.Base(ObjectKind.Tree),
             3,
             compressed2.data
@@ -9055,7 +9055,7 @@ func testFromEntriesIterWithDeltaRef(): Unit {
     let compressed1 = deflate([UInt8(1), UInt8(2), UInt8(3)])
     entries.add(
         OutputEntry(
-            ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
             OutputEntryKind.Base(ObjectKind.Blob),
             3,
             compressed1.data
@@ -9066,7 +9066,7 @@ func testFromEntriesIterWithDeltaRef(): Unit {
     let compressed2 = deflate(deltaData)
     entries.add(
         OutputEntry(
-            ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
             OutputEntryKind.DeltaRef(0),
             Int64(deltaData.size),
             compressed2.data

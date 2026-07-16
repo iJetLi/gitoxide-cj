@@ -232,13 +232,13 @@ public class PriorityQueue {
     }
 
     // 对齐 Rust: PriorityQueue::pop()
-    // 弹出优先级最高的元素
+    // 弹出优先级最高的元素（数组头部，key 降序排列）
     public func pop(): ?PQItem {
         if (items.size == 0) {
             return None
         }
-        let item = items[items.size - 1]
-        items.remove(at: items.size - 1)
+        let item = items[0]
+        items.remove(at: 0)
         Some(item)
     }
 

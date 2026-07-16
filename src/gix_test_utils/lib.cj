@@ -45,7 +45,7 @@ public func fixtureBytes(relativePath: String): Array<Byte> {
 // 参数 hex：40 或 64 字符的十六进制哈希字符串
 // 返回值：对应的 ObjectId 实例
 public func hexToId(hex: String): ObjectId {
-    ObjectId.fromHex(hex)
+    ObjectId.fromHexOrThrow(hex)
 }
 
 // 修复字节数据中的 CRLF 换行符，将 \r\n 转换为 \n

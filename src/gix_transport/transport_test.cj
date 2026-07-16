@@ -1,14 +1,13 @@
 // 文件：transport_test.cj
 // 用途：gix_transport 包的单元测试，对齐 Rust gitoxide gix-transport 测试
 // 所属包：gix.gix_transport
-// 对齐来源：gix-transport/tests/blocking-transport.rs, gix-transport/tests/blocking-transport-http.rs
+// 对齐来源：gix-transport/tests/blocking-transport.rs, gix-transport/tests/client/capabilities.rs
 
 package gitoxide.gix_transport
 
 import gitoxide.gix_hash.*
 import gitoxide.gix_url.*
 import std.collection.*
-import std.unittest.*
 
 // ============================================================
 // ProtocolVersion 测试 — 对齐 gix-transport/src/protocol/version.rs
@@ -16,7 +15,6 @@ import std.unittest.*
 
 @Test
 func testProtocolVersionV1(): Unit {
-    // 对齐 Rust: ProtocolVersion::V1
     let v = ProtocolVersion.V1
     if (v != ProtocolVersion.V1) {
         throw Exception("V1 should equal V1")
@@ -25,7 +23,6 @@ func testProtocolVersionV1(): Unit {
 
 @Test
 func testProtocolVersionV2(): Unit {
-    // 对齐 Rust: ProtocolVersion::V2
     let v = ProtocolVersion.V2
     if (v != ProtocolVersion.V2) {
         throw Exception("V2 should equal V2")
@@ -34,9 +31,18 @@ func testProtocolVersionV2(): Unit {
 
 @Test
 func testProtocolVersionV1NotV2(): Unit {
-    // 对齐 Rust: V1 != V2
     if (ProtocolVersion.V1 == ProtocolVersion.V2) {
         throw Exception("V1 should not equal V2")
+    }
+}
+
+@Test
+func testProtocolVersionV0(): Unit {
+    if (ProtocolVersion.V0 != ProtocolVersion.V0) {
+        throw Exception("V0 should equal V0")
+    }
+    if (ProtocolVersion.V0 == ProtocolVersion.V1) {
+        throw Exception("V0 should not equal V1")
     }
 }
 
@@ -88,7 +94,7 @@ func testServiceNameMutability(): Unit {
 @Test
 func testHandshakeResultConstruct(): Unit {
     // 对齐 Rust: HandshakeResult { refs, protocol_version, capabilities }
-    let refs = ArrayList<RemoteRef>()
+    let refs = ArrayList<Ref>()
     let caps = ArrayList<String>()
     caps.add("multi_ack_detailed")
     let result = HandshakeResult(refs, ProtocolVersion.V2, caps)
@@ -107,18 +113,18 @@ func testHandshakeResultConstruct(): Unit {
 func testHandshakeResultWithRefs(): Unit {
     // 对齐 Rust: HandshakeResult 包含远程引用
     let id = ObjectId.null(HashKind.Sha1)
-    let refs = ArrayList<RemoteRef>()
-    refs.add(RemoteRef(id, "refs/heads/main"))
-    refs.add(RemoteRef(id, "refs/tags/v1.0"))
+    let refs = ArrayList<Ref>()
+    refs.add(Ref.Direct("refs/heads/main", id))
+    refs.add(Ref.Direct("refs/tags/v1.0", id))
     let caps = ArrayList<String>()
     let result = HandshakeResult(refs, ProtocolVersion.V1, caps)
     if (result.refs.size != 2) {
         throw Exception("refs should have 2 entries")
     }
-    if (result.refs[0].name != "refs/heads/main") {
+    if (refName(result.refs[0]) != "refs/heads/main") {
         throw Exception("first ref should be 'refs/heads/main'")
     }
-    if (result.refs[1].name != "refs/tags/v1.0") {
+    if (refName(result.refs[1]) != "refs/tags/v1.0") {
         throw Exception("second ref should be 'refs/tags/v1.0'")
     }
 }
@@ -126,7 +132,7 @@ func testHandshakeResultWithRefs(): Unit {
 @Test
 func testHandshakeResultV1(): Unit {
     // 对齐 Rust: HandshakeResult 协议版本 V1
-    let refs = ArrayList<RemoteRef>()
+    let refs = ArrayList<Ref>()
     let caps = ArrayList<String>()
     let result = HandshakeResult(refs, ProtocolVersion.V1, caps)
     if (result.protocolVersion != ProtocolVersion.V1) {
@@ -137,7 +143,7 @@ func testHandshakeResultV1(): Unit {
 @Test
 func testHandshakeResultV2(): Unit {
     // 对齐 Rust: HandshakeResult 协议版本 V2
-    let refs = ArrayList<RemoteRef>()
+    let refs = ArrayList<Ref>()
     let caps = ArrayList<String>()
     let result = HandshakeResult(refs, ProtocolVersion.V2, caps)
     if (result.protocolVersion != ProtocolVersion.V2) {
@@ -148,7 +154,7 @@ func testHandshakeResultV2(): Unit {
 @Test
 func testHandshakeResultMultipleCapabilities(): Unit {
     // 对齐 Rust: HandshakeResult 多个能力声明
-    let refs = ArrayList<RemoteRef>()
+    let refs = ArrayList<Ref>()
     let caps = ArrayList<String>()
     caps.add("multi_ack_detailed")
     caps.add("no-done")
@@ -165,59 +171,60 @@ func testHandshakeResultMultipleCapabilities(): Unit {
 }
 
 // ============================================================
-// RemoteRef 测试 — 对齐 gix-transport/src/client/remote_ref.rs
+// Ref 测试 — 对齐 gix-protocol/src/handshake/mod.rs (Ref 枚举)
 // ============================================================
 
 @Test
-func testRemoteRefConstruct(): Unit {
-    // 对齐 Rust: RemoteRef { id, name }
+func testRefDirectConstruct(): Unit {
+    // 对齐 Rust: Ref::Direct { full_ref_name, object }
     let id = ObjectId.null(HashKind.Sha1)
-    let r = RemoteRef(id, "refs/heads/main")
-    if (r.name != "refs/heads/main") {
+    let r = Ref.Direct("refs/heads/main", id)
+    if (refName(r) != "refs/heads/main") {
         throw Exception("name should be 'refs/heads/main'")
     }
 }
 
 @Test
-func testRemoteRefDifferentNames(): Unit {
+func testRefDifferentNames(): Unit {
     // 对齐 Rust: 不同引用名
     let id = ObjectId.null(HashKind.Sha1)
-    let branch = RemoteRef(id, "refs/heads/develop")
-    let tag = RemoteRef(id, "refs/tags/v2.0")
-    if (branch.name != "refs/heads/develop") {
+    let branch = Ref.Direct("refs/heads/develop", id)
+    let tag = Ref.Direct("refs/tags/v2.0", id)
+    if (refName(branch) != "refs/heads/develop") {
         throw Exception("branch name mismatch")
     }
-    if (tag.name != "refs/tags/v2.0") {
+    if (refName(tag) != "refs/tags/v2.0") {
         throw Exception("tag name mismatch")
     }
 }
 
 @Test
-func testRemoteRefWithRealId(): Unit {
-    // 对齐 Rust: RemoteRef 使用真实 ObjectId
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let r = RemoteRef(id, "refs/heads/main")
-    if (r.id.toHexString() != "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391") {
+func testRefWithRealId(): Unit {
+    // 对齐 Rust: Ref::Direct 使用真实 ObjectId
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let r = Ref.Direct("refs/heads/main", id)
+    if (refObjectId(r).getOrThrow().toHexString() != "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391") {
         throw Exception("id should match")
     }
 }
 
 @Test
-func testRemoteRefHeadRef(): Unit {
-    // 对齐 Rust: RemoteRef HEAD 引用
+func testRefHeadRef(): Unit {
+    // 对齐 Rust: Ref::Direct HEAD 引用
     let id = ObjectId.null(HashKind.Sha1)
-    let r = RemoteRef(id, "HEAD")
-    if (r.name != "HEAD") {
+    let r = Ref.Direct("HEAD", id)
+    if (refName(r) != "HEAD") {
         throw Exception("name should be 'HEAD'")
     }
 }
 
 @Test
-func testRemoteRefPeeledTag(): Unit {
-    // 对齐 Rust: RemoteRef 剥离标签引用
-    let id = ObjectId.null(HashKind.Sha1)
-    let r = RemoteRef(id, "refs/tags/v1.0^{}")
-    if (r.name != "refs/tags/v1.0^{}") {
+func testRefPeeledTag(): Unit {
+    // 对齐 Rust: Ref::Peeled 剥离标签引用
+    let tagId = ObjectId.null(HashKind.Sha1)
+    let objId = ObjectId.null(HashKind.Sha1)
+    let r = Ref.Peeled("refs/tags/v1.0", tagId, objId)
+    if (refName(r) != "refs/tags/v1.0") {
         throw Exception("name should be peeled tag")
     }
 }
@@ -230,7 +237,7 @@ func testRemoteRefPeeledTag(): Unit {
 func testFetchResultConstruct(): Unit {
     // 对齐 Rust: FetchResult { pack_data, received_refs }
     let packData: Array<Byte> = [80, 65, 67, 75]
-    let receivedRefs = ArrayList<RemoteRef>()
+    let receivedRefs = ArrayList<Ref>()
     let result = FetchResult(packData, receivedRefs)
     if (result.packData.size != 4) {
         throw Exception("packData should have 4 bytes")
@@ -245,8 +252,8 @@ func testFetchResultWithRefs(): Unit {
     // 对齐 Rust: FetchResult 包含收到的引用
     let packData: Array<Byte> = []
     let id = ObjectId.null(HashKind.Sha1)
-    let receivedRefs = ArrayList<RemoteRef>()
-    receivedRefs.add(RemoteRef(id, "refs/heads/main"))
+    let receivedRefs = ArrayList<Ref>()
+    receivedRefs.add(Ref.Direct("refs/heads/main", id))
     let result = FetchResult(packData, receivedRefs)
     if (result.receivedRefs.size != 1) {
         throw Exception("receivedRefs should have 1 entry")
@@ -257,7 +264,7 @@ func testFetchResultWithRefs(): Unit {
 func testFetchResultEmptyPackData(): Unit {
     // 对齐 Rust: FetchResult 空 pack 数据
     let packData: Array<Byte> = []
-    let receivedRefs = ArrayList<RemoteRef>()
+    let receivedRefs = ArrayList<Ref>()
     let result = FetchResult(packData, receivedRefs)
     if (result.packData.size != 0) {
         throw Exception("packData should be empty")
@@ -271,7 +278,7 @@ func testFetchResultLargePackData(): Unit {
     for (i in 0..100) {
         data.add(UInt8(i % 256))
     }
-    let receivedRefs = ArrayList<RemoteRef>()
+    let receivedRefs = ArrayList<Ref>()
     let result = FetchResult(data.toArray(), receivedRefs)
     if (result.packData.size != 100) {
         throw Exception("packData should have 100 bytes")
@@ -334,31 +341,12 @@ func testClientTransportFetchWithWantsAndHaves(): Unit {
     let wants = ArrayList<ObjectId>()
     wants.add(ObjectId.null(HashKind.Sha1))
     let haves = ArrayList<ObjectId>()
-    haves.add(ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
+    haves.add(ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
     let result = transport.fetch(wants, haves)
     if (!result.isNone()) {
         throw Exception("should return None")
     }
 }
-
-// ============================================================
-// blocking-transport-http 测试
-// ============================================================
-// 【部分可对齐】仓颉 stdx.net.http 提供 HTTP 客户端（ClientBuilder/client.get/client.post），
-// 可实现 Smart HTTP 传输层测试。但原版 reqwest 特定测试和异步传输测试仍无法对齐。
-
-// ============================================================
-// async-transport 测试
-// ============================================================
-// 【无法对齐】原版 async-transport.rs 测试依赖 tokio 异步运行时，
-// 验证异步传输层。仓颉网络编程是阻塞式的（但不会阻塞系统线程），
-// 无对应异步 I/O API。
-
-// ============================================================
-// client 测试 — 对齐 gix-transport/tests/client/*.rs
-// ============================================================
-// 【无法对齐】原版 client 测试验证 Git 协议的细节（capabilities negotiation、
-// ref advertisement parsing 等），依赖本地 Git 服务器夹具。
 
 // 测试辅助：DummyTransport 实现 ClientTransport 接口
 class DummyTransport <: ClientTransport {
@@ -386,6 +374,8 @@ func testHttpTransportConstruct(): Unit {
     }
 }
 
+// 对齐 Rust: blocking_io::http — 通过 HTTP GET /info/refs 获取引用列表
+// 使用本地 Gitea 服务器测试（需要 Gitea 运行在 localhost:3000）
 @Test
 func testHttpTransportHandshakeWithGitea(): Unit {
     // 对齐 Rust: blocking_io::http — 通过 HTTP GET /info/refs 获取引用列表
@@ -403,7 +393,7 @@ func testHttpTransportHandshakeWithGitea(): Unit {
         // 验证 HEAD 引用存在
         var foundHead = false
         for (r in hr.refs) {
-            if (r.name == "HEAD") {
+            if (refName(r) == "HEAD") {
                 foundHead = true
             }
         }
@@ -427,11 +417,11 @@ func testHttpTransportHandshakeRefContent(): Unit {
         // 验证 refs/heads/main 引用存在
         var foundMain = false
         for (r in hr.refs) {
-            if (r.name == "refs/heads/main") {
+            if (refName(r) == "refs/heads/main") {
                 foundMain = true
                 // 验证 ObjectId 是有效的 40 字符 hex
-                if (r.id.toHexString().size != 40) {
-                    throw Exception("ObjectId should be 40 hex chars, got ${r.id.toHexString().size}")
+                if (refObjectId(r).getOrThrow().toHexString().size != 40) {
+                    throw Exception("ObjectId should be 40 hex chars, got " + refObjectId(r).getOrThrow().toHexString().size.toString())
                 }
             }
         }
@@ -442,52 +432,8 @@ func testHttpTransportHandshakeRefContent(): Unit {
 }
 
 @Test
-func testHttpTransportCapabilities(): Unit {
-    // 对齐 Rust: capabilities::from_bytes — 解析能力声明
-    let caps = Capabilities.fromBytes(
-        "multi_ack thin-pack side-band ofs-delta shallow agent=git/2.28.0 symref=HEAD:refs/heads/main")
-    if (!caps.contains("multi_ack")) {
-        throw Exception("should contain multi_ack")
-    }
-    if (!caps.contains("thin-pack")) {
-        throw Exception("should contain thin-pack")
-    }
-    if (!caps.contains("agent")) {
-        throw Exception("should contain agent")
-    }
-    if (!caps.contains("symref")) {
-        throw Exception("should contain symref")
-    }
-    if (let Some(v) <- caps.getValue("agent")) {
-        if (v != "git/2.28.0") {
-            throw Exception("agent should be git/2.28.0, got ${v}")
-        }
-    } else {
-        throw Exception("should have agent value")
-    }
-    if (let Some(v) <- caps.getValue("symref")) {
-        if (v != "HEAD:refs/heads/main") {
-            throw Exception("symref value wrong")
-        }
-    }
-}
-
-@Test
-func testCapabilitiesNoValue(): Unit {
-    // 对齐 Rust: capabilities — 无值的能力
-    let caps = Capabilities.fromBytes("multi_ack ofs-delta")
-    if (!caps.getValue("multi_ack").isNone()) {
-        throw Exception("multi_ack has no value, getValue should return None")
-    }
-    if (!caps.contains("multi_ack")) {
-        throw Exception("should contain multi_ack")
-    }
-}
-
-@Test
 func testHttpTransportFetchWithGitea(): Unit {
     // 对齐 Rust: blocking_io::http — 通过 HTTP POST /git-upload-pack 抓取
-    // 注意：此测试需要本地 HTTP 服务器运行在 localhost:3000
     let transport = HttpTransport()
     let url = Url(Scheme.Http, None, Some("localhost"), Some(3000), "/jet/test.git")
     let handshakeResult = transport.handshake(url, Service.gitUploadPack())
@@ -497,8 +443,8 @@ func testHttpTransportFetchWithGitea(): Unit {
     if (let Some(hr) <- handshakeResult) {
         var mainOid: ?ObjectId = None
         for (r in hr.refs) {
-            if (r.name == "refs/heads/main") {
-                mainOid = Some(r.id)
+            if (refName(r) == "refs/heads/main") {
+                mainOid = refObjectId(r)
             }
         }
         if (let Some(oid) <- mainOid) {
@@ -518,9 +464,258 @@ func testHttpTransportFetchWithGitea(): Unit {
     }
 }
 
+// ============================================================
+// Capabilities 测试 — 对齐 gix-transport/tests/client/capabilities.rs
+// ============================================================
+
+@Test
+func testCapabilitiesFromBytes(): Unit {
+    // 对齐 Rust: capabilities::from_bytes
+    let caps = Capabilities.fromBytes(
+        "multi_ack thin-pack side-band ofs-delta shallow deepen-since deepen-not deepen-relative no-progress include-tag agent=git/2.28.0 symref=HEAD:refs/heads/main")
+    if (!caps.contains("multi_ack")) {
+        throw Exception("should contain multi_ack")
+    }
+    if (!caps.contains("thin-pack")) {
+        throw Exception("should contain thin-pack")
+    }
+    if (!caps.contains("agent")) {
+        throw Exception("should contain agent")
+    }
+    if (!caps.contains("symref")) {
+        throw Exception("should contain symref")
+    }
+    if (let Some(v) <- caps.getValue("agent")) {
+        if (v != "git/2.28.0") {
+            throw Exception("agent should be git/2.28.0, got " + v)
+        }
+    } else {
+        throw Exception("should have agent value")
+    }
+    if (let Some(v) <- caps.getValue("symref")) {
+        if (v != "HEAD:refs/heads/main") {
+            throw Exception("symref value wrong")
+        }
+    }
+}
+
+@Test
+func testCapabilitiesNoValue(): Unit {
+    let caps = Capabilities.fromBytes("multi_ack ofs-delta")
+    if (!caps.getValue("multi_ack").isNone()) {
+        throw Exception("multi_ack has no value, getValue should return None")
+    }
+    if (!caps.contains("multi_ack")) {
+        throw Exception("should contain multi_ack")
+    }
+}
+
+@Test
+func testCapabilitiesEmpty(): Unit {
+    let caps = Capabilities.fromBytes("")
+    if (caps.names.size != 0) {
+        throw Exception("should have no capabilities")
+    }
+}
+
+// ============================================================
+// Acknowledgement 测试 — 对齐 Rust gix_protocol::fetch::response::Acknowledgement
+// ============================================================
+
+@Test
+func testParseAcknowledgementReady(): Unit {
+    if (let Some(ack) <- parseAcknowledgement("ready")) {
+        match (ack) {
+            case Acknowledgement.Ready => ()
+            case _ => throw Exception("should be Ready")
+        }
+    } else {
+        throw Exception("should parse ready")
+    }
+}
+
+@Test
+func testParseAcknowledgementNak(): Unit {
+    if (let Some(ack) <- parseAcknowledgement("NAK")) {
+        match (ack) {
+            case Acknowledgement.Nak => ()
+            case _ => throw Exception("should be Nak")
+        }
+    } else {
+        throw Exception("should parse NAK")
+    }
+}
+
+@Test
+func testParseAcknowledgementCommon(): Unit {
+    if (let Some(ack) <- parseAcknowledgement("ACK e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 common")) {
+        match (ack) {
+            case Acknowledgement.Common(id) =>
+                if (id.toHexString() != "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391") {
+                    throw Exception("id mismatch")
+                }
+            case _ => throw Exception("should be Common")
+        }
+    } else {
+        throw Exception("should parse ACK")
+    }
+}
+
+@Test
+func testParseAcknowledgementAckReady(): Unit {
+    if (let Some(ack) <- parseAcknowledgement("ACK e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 ready")) {
+        match (ack) {
+            case Acknowledgement.Ready => ()
+            case _ => throw Exception("should be Ready")
+        }
+    } else {
+        throw Exception("should parse ACK ready")
+    }
+}
+
+// ============================================================
+// ShallowUpdate 测试 — 对齐 Rust gix_protocol::fetch::response::ShallowUpdate
+// ============================================================
+
+@Test
+func testParseShallowUpdateShallow(): Unit {
+    if (let Some(su) <- parseShallowUpdate("shallow e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")) {
+        match (su) {
+            case ShallowUpdate.Shallow(id) =>
+                if (id.toHexString() != "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391") {
+                    throw Exception("id mismatch")
+                }
+            case _ => throw Exception("should be Shallow")
+        }
+    } else {
+        throw Exception("should parse shallow")
+    }
+}
+
+@Test
+func testParseShallowUpdateUnshallow(): Unit {
+    if (let Some(su) <- parseShallowUpdate("unshallow e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")) {
+        match (su) {
+            case ShallowUpdate.Unshallow(id) =>
+                if (id.toHexString() != "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391") {
+                    throw Exception("id mismatch")
+                }
+            case _ => throw Exception("should be Unshallow")
+        }
+    } else {
+        throw Exception("should parse unshallow")
+    }
+}
+
+// ============================================================
+// Response 测试 — 对齐 Rust gix_protocol::fetch::Response
+// ============================================================
+
+@Test
+func testResponseConstruct(): Unit {
+    let r = Response()
+    if (r.acks.size != 0) {
+        throw Exception("acks should be empty")
+    }
+    if (r.shallows.size != 0) {
+        throw Exception("shallows should be empty")
+    }
+    if (r.hasPack) {
+        throw Exception("hasPack should be false")
+    }
+}
+
+@Test
+func testResponseWithAcks(): Unit {
+    var acks = ArrayList<Acknowledgement>()
+    acks.add(Acknowledgement.Nak)
+    acks.add(Acknowledgement.Common(ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")))
+    var shallows = ArrayList<ShallowUpdate>()
+    let r = Response(acks, shallows, true)
+    if (r.acks.size != 2) {
+        throw Exception("should have 2 acks")
+    }
+    if (!r.hasPack) {
+        throw Exception("hasPack should be true")
+    }
+}
+
+// ============================================================
+// RemoteProgress 测试 — 对齐 Rust gix_protocol::RemoteProgress
+// ============================================================
+
+@Test
+func testRemoteProgressFromBytesCounting(): Unit {
+    // 对齐 Rust: counting_objects_with_percentage
+    let bytes = "Counting objects: 50% (5/10), done.".toArray()
+    if (let Some(rp) <- RemoteProgress.fromBytes(bytes)) {
+        if (rp.action != "Counting objects") {
+            throw Exception("action should be 'Counting objects'")
+        }
+        if (rp.percent.isNone() || rp.percent.getOrThrow() != 50) {
+            throw Exception("percent should be 50")
+        }
+        if (rp.step.isNone() || rp.step.getOrThrow() != 5) {
+            throw Exception("step should be 5")
+        }
+        if (rp.max.isNone() || rp.max.getOrThrow() != 10) {
+            throw Exception("max should be 10")
+        }
+    } else {
+        throw Exception("should parse progress")
+    }
+}
+
+@Test
+func testRemoteProgressFromBytesEnumerating(): Unit {
+    // 对齐 Rust: enumerating_just_with_count
+    let bytes = "Enumerating objects: 10, done.".toArray()
+    if (let Some(rp) <- RemoteProgress.fromBytes(bytes)) {
+        if (rp.action != "Enumerating objects") {
+            throw Exception("action should be 'Enumerating objects'")
+        }
+        if (rp.step.isNone() || rp.step.getOrThrow() != 10) {
+            throw Exception("step should be 10")
+        }
+    } else {
+        throw Exception("should parse progress")
+    }
+}
+
+@Test
+func testRemoteProgressFromBytesInvalid(): Unit {
+    // 对齐 Rust: a_message_we_dont_understand
+    let bytes = "something that might be progress: but is not.".toArray()
+    let result = RemoteProgress.fromBytes(bytes)
+    if (result.isSome()) {
+        throw Exception("should return None for non-progress")
+    }
+}
+
+// ============================================================
+// agent 测试 — 对齐 Rust gix_protocol::util::agent
+// ============================================================
+
+@Test
+func testAgentWithGitPrefix(): Unit {
+    if (agent("git/2.40.0") != "git/2.40.0") {
+        throw Exception("should keep git/ prefix")
+    }
+}
+
+@Test
+func testAgentWithoutGitPrefix(): Unit {
+    if (agent("gix-cj/1.0") != "git/gix-cj/1.0") {
+        throw Exception("should add git/ prefix")
+    }
+}
+
+// ============================================================
+// ProtocolVersion 比较测试
+// ============================================================
+
 @Test
 func testProtocolVersionEquality(): Unit {
-    // 对齐 Rust: ProtocolVersion 比较
     if (ProtocolVersion.V1 != ProtocolVersion.V1) {
         throw Exception("V1 should equal V1")
     }
@@ -529,5 +724,75 @@ func testProtocolVersionEquality(): Unit {
     }
     if (ProtocolVersion.V1 == ProtocolVersion.V2) {
         throw Exception("V1 should not equal V2")
+    }
+}
+
+// ============================================================
+// ReusableHttpTransport 测试 — 对齐 Rust gix_transport::client::blocking_io::http
+// ============================================================
+
+@Test
+func testReusableHttpTransportConstruct(): Unit {
+    // 对齐 Rust: 连接复用传输层构造
+    let transport = ReusableHttpTransport()
+    if (!transport.keepAlive) {
+        throw Exception("keepAlive should default to true")
+    }
+    if (transport.inner.lastHost != "") {
+        throw Exception("inner transport should be fresh")
+    }
+}
+
+@Test
+func testReusableHttpTransportKeepAliveToggle(): Unit {
+    // 对齐 Rust: 连接复用开关
+    let transport = ReusableHttpTransport()
+    transport.keepAlive = false
+    if (transport.keepAlive) {
+        throw Exception("keepAlive should be false after setting")
+    }
+}
+
+// ============================================================
+// V2CommandBuilder 测试 — 对齐 Rust gix_transport::client::blocking_io::RequestWriter
+// ============================================================
+
+@Test
+func testV2CommandBuilderLsRefs(): Unit {
+    // 对齐 Rust: V2 ls-refs 命令构建
+    let builder = V2CommandBuilder(Command.LsRefs)
+    builder.addArgument("refs/heads")
+    builder.addCapability("symref")
+    let encoded = builder.encode()
+    if (encoded.size == 0) {
+        throw Exception("encoded V2 command should not be empty")
+    }
+}
+
+@Test
+func testV2CommandBuilderFetch(): Unit {
+    // 对齐 Rust: V2 fetch 命令构建
+    let builder = V2CommandBuilder(Command.Fetch)
+    builder.addArgument("want e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    builder.addCapability("thin-pack")
+    let encoded = builder.encode()
+    if (encoded.size == 0) {
+        throw Exception("encoded V2 fetch command should not be empty")
+    }
+}
+
+@Test
+func testV2CommandBuilderMultipleArguments(): Unit {
+    // 对齐 Rust: V2 命令多参数
+    let builder = V2CommandBuilder(Command.LsRefs)
+    builder.addArgument("refs/heads")
+    builder.addArgument("refs/tags")
+    builder.addCapability("symref")
+    builder.addCapability("agent")
+    if (builder.arguments.size != 2) {
+        throw Exception("should have 2 arguments")
+    }
+    if (builder.capabilities.size != 2) {
+        throw Exception("should have 2 capabilities")
     }
 }

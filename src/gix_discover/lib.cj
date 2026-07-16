@@ -91,7 +91,7 @@ func isBareRepo(dir: String): Bool {
 // 获取路径的父目录
 // 参数 path：目录路径
 // 返回值：父目录路径，已是根目录时返回自身
-func parentDir(path: String): String {
+public func parentDir(path: String): String {
     let idx = path.lastIndexOf('/')
     if (let Some(i) <- idx) {
         if (i == 0) {

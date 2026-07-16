@@ -93,7 +93,7 @@ public func parseTodo(content: String): ArrayList<RebaseStep> {
                 case "drop" | "d" => RebaseAction.Drop
                 case _ => RebaseAction.Pick
             }
-            result.add(RebaseStep(action, ObjectId.fromHex(parts[1])))
+            result.add(RebaseStep(action, ObjectId.fromHexOrThrow(parts[1])))
         }
     }
     result

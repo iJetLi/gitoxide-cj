@@ -35,7 +35,7 @@ func testLooseStoreCreation(): Unit {
 func testLooseStoreExistsNonExistent(): Unit {
     // 对齐 Rust: loose::exists — 不存在的对象
     let loose = LooseStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (loose.exists(id)) {
         throw Exception("non-existent object should not exist")
     }
@@ -45,7 +45,7 @@ func testLooseStoreExistsNonExistent(): Unit {
 func testLooseStoreReadNonExistent(): Unit {
     // 对齐 Rust: loose::read — 不存在的对象返回 None
     let loose = LooseStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (loose.read(id).isSome()) {
         throw Exception("non-existent object read should return None")
     }
@@ -160,7 +160,7 @@ func testDynamicStoreCreation(): Unit {
 func testDynamicStoreExistsNonExistent(): Unit {
     // 对齐 Rust: DynamicStore::exists — DynamicStore 无 exists 方法，验证构造不崩溃
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     // DynamicStore 不直接提供 exists，需通过 CompoundStore 间接使用
     if (dyn.objectsDir != "/tmp/nonexistent-odb/objects") {
         throw Exception("objectsDir mismatch")
@@ -188,7 +188,7 @@ func testCompoundStoreExistsNonExistent(): Unit {
     let loose = LooseStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (compound.exists(id)) {
         throw Exception("non-existent object should not exist in compound store")
     }
@@ -200,7 +200,7 @@ func testCompoundStoreReadNonExistent(): Unit {
     let loose = LooseStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (compound.tryFind(id).isSome()) {
         throw Exception("non-existent object read should return None in compound store")
     }
@@ -217,7 +217,7 @@ func testOdbHandleCreation(): Unit {
     let dyn = DynamicStore("/tmp/test-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let handle = OdbHandle(compound)
-    if (handle.exists(ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))) {
+    if (handle.exists(ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))) {
         throw Exception("empty ODB should not contain objects")
     }
 }
@@ -229,7 +229,7 @@ func testOdbHandleFindNonExistent(): Unit {
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let handle = OdbHandle(compound)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (handle.tryFind(id).isSome()) {
         throw Exception("non-existent object find should return None")
     }
@@ -267,7 +267,7 @@ func testLooseStoreReadGitCreatedObject(): Unit {
     }
     let loose = LooseStore(gitObjDir, HashKind.Sha1)
     let hex = "95d09f2b10159347eece71399a7e2e907ea3df4f"
-    let id = ObjectId.fromHex(hex)
+    let id = ObjectId.fromHexOrThrow(hex)
     if (!loose.exists(id)) {
         throw Exception("git-created object should exist")
     }
@@ -473,7 +473,7 @@ func testOdbFindLooseObjectNonExistent(): Unit {
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let handle = OdbHandle(compound)
-    let id = ObjectId.fromHex("37d4e6c5c48ba0d245164c4e10d5f41140cab980")
+    let id = ObjectId.fromHexOrThrow("37d4e6c5c48ba0d245164c4e10d5f41140cab980")
     if (handle.tryFind(id).isSome()) {
         throw Exception("non-existent loose object should not be found")
     }
@@ -486,7 +486,7 @@ func testOdbFindMissingObject(): Unit {
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let handle = OdbHandle(compound)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (handle.tryFind(id).isSome()) {
         throw Exception("missing object should not be found")
     }
@@ -525,7 +525,7 @@ func testOdbHeaderLooseObjectNonExistent(): Unit {
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let handle = OdbHandle(compound)
-    let id = ObjectId.fromHex("37d4e6c5c48ba0d245164c4e10d5f41140cab980")
+    let id = ObjectId.fromHexOrThrow("37d4e6c5c48ba0d245164c4e10d5f41140cab980")
     if (handle.tryHeader(id).isSome()) {
         throw Exception("non-existent object should not have header")
     }
@@ -722,7 +722,7 @@ func testMemoryProxyFindNonExistent(): Unit {
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let proxy = MemoryProxy(compound, 10000)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (proxy.tryFind(id).isSome()) {
         throw Exception("non-existent object should not be found")
     }
@@ -811,7 +811,7 @@ func testRegressionNonExistentObjectNotCrash(): Unit {
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let handle = OdbHandle(compound)
-    let id = ObjectId.fromHex("ecc68100297fff843a7eef8df0d0fb80c1c8bac5")
+    let id = ObjectId.fromHexOrThrow("ecc68100297fff843a7eef8df0d0fb80c1c8bac5")
     if (handle.tryFind(id).isSome()) {
         throw Exception("non-existent object should not be found")
     }
@@ -928,7 +928,7 @@ func testLooseStoreHeaderExisting(): Unit {
 func testLooseStoreHeaderNonExisting(): Unit {
     // 对齐 Rust: loose::find::header::non_existing — 不存在对象的 header
     let loose = LooseStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let data = loose.read(id)
     if (data.isSome()) {
         throw Exception("non-existent object should not have data")
@@ -1241,7 +1241,7 @@ func testLinkedStoreFindInAlternates(): Unit {
 func testLinkedStoreFindNotInAlternates(): Unit {
     // 对齐 Rust: linked::locate — 不在 alternates 中的对象
     let store = LinkedStore()
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (store.tryFind(id).isSome()) {
         throw Exception("empty linked store should not find any object")
     }
@@ -1260,7 +1260,7 @@ func testLinkedStoreMultipleAlternates(): Unit {
     if (store.alternates.size != 2) {
         throw Exception("should have 2 alternates")
     }
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (store.tryFind(id).isSome()) {
         throw Exception("non-existent object in alternates should not be found")
     }
@@ -1277,7 +1277,7 @@ func testOdbHandleArcCreation(): Unit {
     let dyn = DynamicStore("/tmp/test-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
     let handle = OdbHandleArc(compound)
-    if (handle.exists(ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))) {
+    if (handle.exists(ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))) {
         throw Exception("empty ODB should not contain objects")
     }
 }
@@ -1311,7 +1311,7 @@ func testOdbHandleArcWriteAndFind(): Unit {
 func testSinkStoreImplementsOdbFind(): Unit {
     // 对齐 Rust: SinkStore 实现 OdbFind 接口
     let sink = SinkStore()
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (sink.tryFind(id).isSome()) {
         throw Exception("SinkStore tryFind should always return None")
     }
@@ -1321,7 +1321,7 @@ func testSinkStoreImplementsOdbFind(): Unit {
 func testSinkStoreImplementsOdbExists(): Unit {
     // 对齐 Rust: SinkStore 实现 OdbExists 接口
     let sink = SinkStore()
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (sink.exists(id)) {
         throw Exception("SinkStore exists should always return false")
     }
@@ -1331,7 +1331,7 @@ func testSinkStoreImplementsOdbExists(): Unit {
 func testSinkStoreImplementsOdbFindHeader(): Unit {
     // 对齐 Rust: SinkStore 实现 OdbFindHeader 接口
     let sink = SinkStore()
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (sink.tryHeader(id).isSome()) {
         throw Exception("SinkStore tryHeader should always return None")
     }
@@ -1764,7 +1764,7 @@ func testLooseStoreAtomicObjectPath(): Unit {
     } catch (_: Exception) {}
     let loose = LooseStore(testDir, HashKind.Sha1)
 
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let path = loose.objectPath(id)
     // 路径应为 objectsDir/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     if (!path.contains("/aa/")) {
@@ -1950,7 +1950,7 @@ func testDynamicStoreRefreshIncrementCount(): Unit {
 func testDynamicStoreReplacementsEmpty(): Unit {
     // 对齐 Rust: 无替换规则时 applyReplacements 返回原始 ID
     let dyn = DynamicStore("/tmp/test-odb/objects", HashKind.Sha1)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let resolved = dyn.applyReplacements(id)
     if (resolved.toHexString() != id.toHexString()) {
         throw Exception("no replacements should return original id")
@@ -1961,8 +1961,8 @@ func testDynamicStoreReplacementsEmpty(): Unit {
 func testDynamicStoreReplacementsApplied(): Unit {
     // 对齐 Rust: 有替换规则时 applyReplacements 返回替换后的 ID
     let dyn = DynamicStore("/tmp/test-odb/objects", HashKind.Sha1)
-    let srcId = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let dstId = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let srcId = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let dstId = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
     dyn.replacements.add((srcId, dstId))
     let resolved = dyn.applyReplacements(srcId)
     if (resolved.toHexString() != dstId.toHexString()) {
@@ -1974,8 +1974,8 @@ func testDynamicStoreReplacementsApplied(): Unit {
 func testDynamicStoreIgnoreReplacements(): Unit {
     // 对齐 Rust: ignore_replacements = true 时不应用替换
     let dyn = DynamicStore("/tmp/test-odb/objects", HashKind.Sha1)
-    let srcId = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let dstId = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let srcId = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let dstId = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
     dyn.replacements.add((srcId, dstId))
     dyn.ignoreReplacements = true
     let resolved = dyn.applyReplacements(srcId)
@@ -2140,8 +2140,8 @@ func testAllObjectsIteratorWithLooseOnly(): Unit {
     // 对齐 Rust: iter with no packs, only loose objects
     let bundles = ArrayList<Bundle>()
     let looseIds = ArrayList<ObjectId>()
-    let oid1 = ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567")
-    let oid2 = ObjectId.fromHex("fedcba9876543210fedcba9876543210fedcba98")
+    let oid1 = ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567")
+    let oid2 = ObjectId.fromHexOrThrow("fedcba9876543210fedcba9876543210fedcba98")
     looseIds.add(oid1)
     looseIds.add(oid2)
     let iter = AllObjectsIterator(bundles, looseIds, IterOrdering.PackLexicographicalThenLooseLexicographical)
@@ -2164,7 +2164,7 @@ func testAllObjectsIteratorWithLooseOnly(): Unit {
 func testDynamicStoreLookupPrefixNoMatch(): Unit {
     // 对齐 Rust: lookup_prefix with no matching objects
     let dyn = DynamicStore("/tmp/test-odb-noexist/objects", HashKind.Sha1)
-    let prefix = Prefix(ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567"), 8)
+    let prefix = Prefix(ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567"), 8)
     let result = dyn.lookupPrefix(prefix)
     if (result.isSome()) {
         throw Exception("should find nothing in empty store")
@@ -2187,7 +2187,7 @@ func testCompoundStoreLookupPrefixNoMatch(): Unit {
     let loose = LooseStore("/tmp/test-odb-noexist/objects", HashKind.Sha1)
     let dyn = DynamicStore("/tmp/test-odb-noexist/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
-    let prefix = Prefix(ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567"), 8)
+    let prefix = Prefix(ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567"), 8)
     let result = compound.lookupPrefix(prefix)
     if (result.isSome()) {
         throw Exception("should find nothing in empty compound store")
@@ -2229,7 +2229,7 @@ func testOdbHandleIterAndPrefixLookup(): Unit {
     if (iter.next().isSome()) {
         throw Exception("empty handle iterator should return None")
     }
-    let prefix = Prefix(ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567"), 8)
+    let prefix = Prefix(ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567"), 8)
     if (handle.lookupPrefix(prefix).isSome()) {
         throw Exception("empty handle lookup should find nothing")
     }
@@ -2417,7 +2417,7 @@ func testLooseStoreFindTree(): Unit {
         treeData.add(b)
     }
     treeData.add(UInt8(0)) // null
-    let sha1_1 = ObjectId.fromHex("96ae868b3539f551c88fd5f02394d022581b11b0")
+    let sha1_1 = ObjectId.fromHexOrThrow("96ae868b3539f551c88fd5f02394d022581b11b0")
     for (b in sha1_1.bytes) {
         treeData.add(b)
     }
@@ -2432,7 +2432,7 @@ func testLooseStoreFindTree(): Unit {
         treeData.add(b)
     }
     treeData.add(UInt8(0)) // null
-    let sha1_2 = ObjectId.fromHex("37d4e6c5c48ba0d245164c4e10d5f41140cab980")
+    let sha1_2 = ObjectId.fromHexOrThrow("37d4e6c5c48ba0d245164c4e10d5f41140cab980")
     for (b in sha1_2.bytes) {
         treeData.add(b)
     }
@@ -2488,7 +2488,7 @@ func testLooseStoreHeaderNonExistingAligned(): Unit {
     let loose = LooseStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let dyn = DynamicStore("/tmp/nonexistent-odb/objects", HashKind.Sha1)
     let compound = CompoundStore(loose, dyn)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let header = compound.tryHeader(id)
     if (header.isSome()) {
         throw Exception("header for non-existent object should be None")
@@ -2772,7 +2772,7 @@ func testLooseStoreInvalidObjectNoPanic(): Unit {
     } catch (_: Exception) {}
 
     let loose = LooseStore(testDir + "/objects", HashKind.Sha1)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     // 读取无效对象不应崩溃（可能返回 None 或抛异常，但不应 panic）
     try {
         loose.read(id)
@@ -2806,7 +2806,7 @@ func testLooseStoreLookupPrefixNoMatch(): Unit {
     loose.write(ObjectKind.Blob, "test".toArray())
 
     // 用全零前缀查找，不应匹配任何对象
-    let nullId = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let nullId = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     let dyn = DynamicStore(objectsDir, HashKind.Sha1)
     let result = dyn.lookupPrefix(Prefix(nullId, 7))
     if (result.isSome()) {

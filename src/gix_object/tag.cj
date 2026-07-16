@@ -55,7 +55,7 @@ public class TagRef {
     // 获取目标对象的 ObjectId
     // 返回值：由 target 字段解析得到的 ObjectId
     public func targetId(): ObjectId {
-        ObjectId.fromHex(target)
+        ObjectId.fromHexOrThrow(target)
     }
 
     // 解析标签者签名为 Signature 对象
@@ -72,7 +72,7 @@ public class TagRef {
     // 内部将字符串字段解析为结构化类型
     // 返回值：Tag 实例（注意：tagger 解析失败时仍返回 Tag，tagger 字段为 None）
     public func intoOwned(): ?Tag {
-        let targetId = ObjectId.fromHex(target)
+        let targetId = ObjectId.fromHexOrThrow(target)
         var taggerSig: ?Signature = None
         if (let Some(raw) <- tagger) {
             taggerSig = Signature.parse(raw.toArray())

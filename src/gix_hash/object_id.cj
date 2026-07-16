@@ -26,14 +26,22 @@ public class ObjectId {
 
     // 从十六进制字符串解析创建 ObjectId
     // 根据字符串长度自动推断哈希算法类型：40 字符为 SHA-1，64 字符为 SHA-256
+    // 对齐 Rust: ObjectId::from_hex(buffer) -> Result<ObjectId, Error>
+    // 仓颉差异：返回 ?ObjectId，解析失败返回 None
     // 参数 hex：十六进制格式的哈希字符串
-    // 返回值：解析后的 ObjectId 实例
-    public static func fromHex(hex: String): ObjectId {
+    // 返回值：解析成功返回 ObjectId，失败返回 None
+    public static func fromHex(hex: String): ?ObjectId {
+        if (hex.size != 40 && hex.size != 64) {
+            return None
+        }
         var result = ArrayList<Byte>()
         var i: Int64 = 0
         while (i + 1 < hex.size) {
             let high = hexDigitValue(hex[i])
             let low = hexDigitValue(hex[i + 1])
+            if (high < 0 || low < 0) {
+                return None
+            }
             result.add(UInt8((high << 4) | low))
             i += 2
         }
@@ -45,14 +53,32 @@ public class ObjectId {
         ObjectId(result.toArray(), kind)
     }
 
+    // 便捷方法：从十六进制字符串解析，失败时抛出异常
+    // 用于已知 hex 字符串合法的测试场景
+    public static func fromHexOrThrow(hex: String): ObjectId {
+        fromHex(hex).getOrThrow()
+    }
+
+    // 检查哈希是否全为零字节
+    // 对齐 Rust: ObjectId::is_null() -> bool
+    // 返回值：全零返回 true
+    public func isNull(): Bool {
+        for (b in bytes) {
+            if (b != UInt8(0)) {
+                return false
+            }
+        }
+        true
+    }
+
     // 获取空 blob 对象的 ObjectId
     // 空 blob 是 Git 中的特殊对象，内容为空
     // 参数 kind：哈希算法类型
     // 返回值：空 blob 对应的 ObjectId
     public static func emptyBlob(kind: HashKind): ObjectId {
         match (kind) {
-            case HashKind.Sha1 => ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-            case HashKind.Sha256 => ObjectId.fromHex("473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813")
+            case HashKind.Sha1 => ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+            case HashKind.Sha256 => ObjectId.fromHexOrThrow("473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813")
         }
     }
 
@@ -62,8 +88,8 @@ public class ObjectId {
     // 返回值：空 tree 对应的 ObjectId
     public static func emptyTree(kind: HashKind): ObjectId {
         match (kind) {
-            case HashKind.Sha1 => ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-            case HashKind.Sha256 => ObjectId.fromHex("6ef19b41225c5369f1c104d45d8d85efa9b057b53b14b4b9b939dd74decc5321")
+            case HashKind.Sha1 => ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+            case HashKind.Sha256 => ObjectId.fromHexOrThrow("6ef19b41225c5369f1c104d45d8d85efa9b057b53b14b4b9b939dd74decc5321")
         }
     }
 
@@ -73,8 +99,8 @@ public class ObjectId {
     // 返回值：全零的 ObjectId
     public static func null(kind: HashKind): ObjectId {
         match (kind) {
-            case HashKind.Sha1 => ObjectId.fromHex("0000000000000000000000000000000000000000")
-            case HashKind.Sha256 => ObjectId.fromHex("0000000000000000000000000000000000000000000000000000000000000000")
+            case HashKind.Sha1 => ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
+            case HashKind.Sha256 => ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000000000000000000000000000")
         }
     }
 

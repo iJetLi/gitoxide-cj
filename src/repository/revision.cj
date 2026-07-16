@@ -82,7 +82,7 @@ class RepoResolver <: ResolveRef {
             let obj = d.decode()
             if (let Some(ObjectRef.Commit(c)) <- obj) {
                 if (c.parents.size > 0) {
-                    Some(ObjectId.fromHex(c.parents[0]))
+                    Some(ObjectId.fromHexOrThrow(c.parents[0]))
                 } else {
                     None
                 }
@@ -92,5 +92,55 @@ class RepoResolver <: ResolveRef {
         } else {
             None
         }
+    }
+
+    public func resolveNthParent(id: ObjectId, n: Int64): ?ObjectId {
+        let data = repo.readObject(id)
+        if (let Some(d) <- data) {
+            let obj = d.decode()
+            if (let Some(ObjectRef.Commit(c)) <- obj) {
+                if (n > 0 && n <= c.parents.size) {
+                    Some(ObjectId.fromHexOrThrow(c.parents[Int64(n - 1)]))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    public func resolveTree(id: ObjectId): ?ObjectId {
+        let data = repo.readObject(id)
+        if (let Some(d) <- data) {
+            let obj = d.decode()
+            if (let Some(ObjectRef.Commit(c)) <- obj) {
+                Some(ObjectId.fromHexOrThrow(c.tree))
+            } else if (let Some(ObjectRef.Tree(t)) <- obj) {
+                Some(id)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    public func resolvePath(path: String): ?ObjectId {
+        None
+    }
+
+    public func resolveUpstream(refName: String): ?ObjectId {
+        None
+    }
+
+    public func resolvePush(refName: String): ?ObjectId {
+        None
+    }
+
+    public func resolveNthPrior(refName: String, n: Int64): ?ObjectId {
+        None
     }
 }

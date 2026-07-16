@@ -45,7 +45,7 @@ func testFsckResultWithErrors(): Unit {
 func testFsckErrorConstruction(): Unit {
     // 对齐 Rust: FsckError construction
     let err = FsckError(FsckErrorKind.CorruptObject, "bad object")
-    if (err.kind != FsckErrorKind.CorruptObject) {
+    if (!(err.kind == FsckErrorKind.CorruptObject)) {
         throw Exception("kind mismatch")
     }
     if (err.message != "bad object") {
@@ -60,7 +60,7 @@ func testFsckErrorConstruction(): Unit {
 func testFsckErrorWithObjectId(): Unit {
     // 对齐 Rust: FsckError with objectId
     let err = FsckError(FsckErrorKind.DanglingReference, "dangling")
-    err.objectId = Some(ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
+    err.objectId = Some(ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
     if (err.objectId.isNone()) {
         throw Exception("objectId should be set")
     }
@@ -119,16 +119,16 @@ func testFsckResultAllErrorKinds(): Unit {
     if (result.errors.size != 4) {
         throw Exception("should have 4 errors")
     }
-    if (result.errors[0].kind != FsckErrorKind.MissingObject) {
+    if (!(result.errors[0].kind == FsckErrorKind.MissingObject)) {
         throw Exception("first error kind mismatch")
     }
-    if (result.errors[1].kind != FsckErrorKind.CorruptObject) {
+    if (!(result.errors[1].kind == FsckErrorKind.CorruptObject)) {
         throw Exception("second error kind mismatch")
     }
-    if (result.errors[2].kind != FsckErrorKind.DanglingReference) {
+    if (!(result.errors[2].kind == FsckErrorKind.DanglingReference)) {
         throw Exception("third error kind mismatch")
     }
-    if (result.errors[3].kind != FsckErrorKind.MissingReference) {
+    if (!(result.errors[3].kind == FsckErrorKind.MissingReference)) {
         throw Exception("fourth error kind mismatch")
     }
 }
@@ -140,7 +140,7 @@ func testFsckErrorWithObjectIdSetLater(): Unit {
     if (err.objectId.isSome()) {
         throw Exception("objectId should be None initially")
     }
-    err.objectId = Some(ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
+    err.objectId = Some(ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"))
     if (err.objectId.isNone()) {
         throw Exception("objectId should be set")
     }
@@ -152,7 +152,7 @@ func testFsckErrorWithObjectIdSetLater(): Unit {
 @Test
 func testFsckErrorKindEquality(): Unit {
     // 对齐 Rust: FsckErrorKind equality
-    if (FsckErrorKind.MissingObject != FsckErrorKind.MissingObject) {
+    if (!(FsckErrorKind.MissingObject == FsckErrorKind.MissingObject)) {
         throw Exception("same kinds should be equal")
     }
     if (FsckErrorKind.CorruptObject == FsckErrorKind.DanglingReference) {

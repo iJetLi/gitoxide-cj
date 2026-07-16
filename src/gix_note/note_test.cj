@@ -15,7 +15,7 @@ import std.unittest.*
 @Test
 func testNoteConstruction(): Unit {
     // 对齐 Rust: Note construction
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let note = Note(id, "this is a note")
     if (note.commitId.toHexString() != "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391") {
         throw Exception("commitId mismatch")
@@ -42,8 +42,8 @@ func testNoteMapCreation(): Unit {
 func testNoteMapSetAndGet(): Unit {
     // 对齐 Rust: NoteMap set → get
     let map = NoteMap()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let noteId = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let noteId = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     map.set(id, noteId)
     let result = map.get(id)
     if (result.isNone()) {
@@ -58,7 +58,7 @@ func testNoteMapSetAndGet(): Unit {
 func testNoteMapGetNonExistent(): Unit {
     // 对齐 Rust: NoteMap get — non-existent
     let map = NoteMap()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (!map.get(id).isNone()) {
         throw Exception("should return None for non-existent")
     }
@@ -68,8 +68,8 @@ func testNoteMapGetNonExistent(): Unit {
 func testNoteMapRemove(): Unit {
     // 对齐 Rust: NoteMap remove
     let map = NoteMap()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let noteId = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let noteId = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     map.set(id, noteId)
     map.remove(id)
     if (!map.get(id).isNone()) {
@@ -81,9 +81,9 @@ func testNoteMapRemove(): Unit {
 func testNoteMapOverwrite(): Unit {
     // 对齐 Rust: NoteMap set overwrites existing
     let map = NoteMap()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let noteId1 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-    let noteId2 = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let noteId1 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let noteId2 = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     map.set(id, noteId1)
     map.set(id, noteId2)
     if (map.get(id).getOrThrow().toHexString() != "0000000000000000000000000000000000000000") {
@@ -99,10 +99,10 @@ func testNoteMapOverwrite(): Unit {
 func testNoteMapMultipleNotes(): Unit {
     // 对齐 Rust: NoteMap with multiple notes
     let map = NoteMap()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-    let noteId1 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
-    let noteId2 = ObjectId.fromHex("9556057aee5abb06912922e9f26c46386a816822")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let noteId1 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let noteId2 = ObjectId.fromHexOrThrow("9556057aee5abb06912922e9f26c46386a816822")
     map.set(id1, noteId1)
     map.set(id2, noteId2)
     if (map.get(id1).getOrThrow().toHexString() != "ffa700b4aca13b80cb6b98a078e7c96804f8e0ec") {
@@ -117,7 +117,7 @@ func testNoteMapMultipleNotes(): Unit {
 func testNoteMapRemoveNonExistent(): Unit {
     // 对齐 Rust: NoteMap remove non-existent key
     let map = NoteMap()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     map.remove(id)
     // 不应崩溃
 }
@@ -126,9 +126,9 @@ func testNoteMapRemoveNonExistent(): Unit {
 func testNoteMapSetRemoveSet(): Unit {
     // 对齐 Rust: NoteMap set → remove → set
     let map = NoteMap()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let noteId1 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-    let noteId2 = ObjectId.fromHex("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let noteId1 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let noteId2 = ObjectId.fromHexOrThrow("ffa700b4aca13b80cb6b98a078e7c96804f8e0ec")
     map.set(id, noteId1)
     map.remove(id)
     map.set(id, noteId2)
@@ -140,8 +140,8 @@ func testNoteMapSetRemoveSet(): Unit {
 @Test
 func testNoteConstructionWithDifferentIds(): Unit {
     // 对齐 Rust: Note construction with different commit IDs
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     let note1 = Note(id1, "note for commit 1")
     let note2 = Note(id2, "note for commit 2")
     if (note1.commitId.toHexString() == note2.commitId.toHexString()) {
@@ -155,7 +155,7 @@ func testNoteConstructionWithDifferentIds(): Unit {
 @Test
 func testNoteEmptyMessage(): Unit {
     // 对齐 Rust: Note with empty message
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let note = Note(id, "")
     if (note.message.size != 0) {
         throw Exception("empty message should have size 0")

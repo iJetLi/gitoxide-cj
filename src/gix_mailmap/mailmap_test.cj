@@ -286,3 +286,72 @@ func testMailmapResolveByEmailOnly(): Unit {
         throw Exception("name should remain unchanged when toName is empty")
     }
 }
+
+// ============================================================
+// 续行测试 — 对齐 Rust gix_mailmap::parse::Lines
+// ============================================================
+
+@Test
+func testMailmapParseContinuationLine(): Unit {
+    // 对齐 Rust: continuation lines — 反斜杠行尾续行
+    let content = "Proper Name <proper@email.com> \\\nOld Name <old@email.com>"
+    let map = Mailmap.parse(content)
+    if (map.entries.size != 1) {
+        throw Exception("continuation should produce 1 entry, got " + map.entries.size.toString())
+    }
+    let entry = map.entries[0]
+    if (entry.toName != "Proper Name") {
+        throw Exception("toName should be 'Proper Name'")
+    }
+    if (entry.fromName != "Old Name") {
+        throw Exception("fromName should be 'Old Name'")
+    }
+}
+
+@Test
+func testMailmapParseMultipleContinuationLines(): Unit {
+    // 对齐 Rust: 多行续行
+    let content = "Proper \\\nName <proper@email.com>"
+    let map = Mailmap.parse(content)
+    if (map.entries.size != 1) {
+        throw Exception("multi-line continuation should produce 1 entry, got " + map.entries.size.toString())
+    }
+}
+
+// ============================================================
+// 大小写规范化测试 — 对齐 Rust gix_mailmap::Snapshot::try_resolve
+// ============================================================
+
+@Test
+func testMailmapResolveCaseInsensitiveEmail(): Unit {
+    // 对齐 Rust: try_resolve — 邮箱大小写不敏感
+    let map = Mailmap.parse("Jane Doe <jane@example.com> <bugs@example.com>")
+    let (name1, email1) = map.resolve("Any Name", "BUGS@EXAMPLE.COM")
+    if (name1 != "Jane Doe") {
+        throw Exception("should match case-insensitive email, got '" + name1 + "'")
+    }
+    let (name2, email2) = map.resolve("Any Name", "Bugs@Example.Com")
+    if (name2 != "Jane Doe") {
+        throw Exception("should match mixed case email, got '" + name2 + "'")
+    }
+}
+
+@Test
+func testMailmapResolveCaseInsensitiveNameMatch(): Unit {
+    // 对齐 Rust: try_resolve — 名称大小写不敏感匹配
+    let map = Mailmap.parse("Proper Name <proper@email.com> old name <old@email.com>")
+    let (name, email) = map.resolve("Old Name", "old@email.com")
+    if (name != "Proper Name") {
+        throw Exception("should match case-insensitive name, got '" + name + "'")
+    }
+}
+
+@Test
+func testMailmapParseVariousFormats(): Unit {
+    // 对齐 Rust: valid_entries — 各种格式混合
+    let content = "Jane <jane@proper.com>\n<proper@proper.com> <improper@proper.com>\nJane <jane@proper.com> Jane <jane@improper.com>"
+    let map = Mailmap.parse(content)
+    if (map.entries.size != 3) {
+        throw Exception("should have 3 entries, got " + map.entries.size.toString())
+    }
+}

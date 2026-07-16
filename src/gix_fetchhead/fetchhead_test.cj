@@ -52,7 +52,7 @@ func testParseFetchHeadMultipleEntries(): Unit {
 @Test
 func testFetchHeadEntryConstruction(): Unit {
     // 对齐 Rust: FetchHeadEntry construction
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = FetchHeadEntry(id, true, Some("refs/heads/main"), Some("https://github.com/example/repo"))
     if (entry.isMerge != true) {
         throw Exception("isMerge should be true")
@@ -130,7 +130,7 @@ func testParseFetchHeadMultipleTrailingNewlines(): Unit {
 @Test
 func testFetchHeadEntryNotForMergeConstruction(): Unit {
     // 对齐 Rust: FetchHeadEntry not-for-merge construction
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = FetchHeadEntry(id, false, Some("refs/heads/dev"), Some("https://github.com/b"))
     if (entry.isMerge) {
         throw Exception("isMerge should be false")
@@ -146,7 +146,7 @@ func testFetchHeadEntryNotForMergeConstruction(): Unit {
 @Test
 func testFetchHeadEntryNoRefName(): Unit {
     // 对齐 Rust: FetchHeadEntry without refName
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = FetchHeadEntry(id, true, None, None)
     if (entry.refName.isSome()) {
         throw Exception("refName should be None")

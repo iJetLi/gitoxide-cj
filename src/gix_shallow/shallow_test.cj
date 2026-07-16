@@ -26,7 +26,7 @@ func testShallowFileCreation(): Unit {
 func testShallowFileIsShallow(): Unit {
     // 对齐 Rust: ShallowFile::is_shallow
     let sf = ShallowFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     sf.commits.add(id)
     if (!sf.isShallow(id)) {
         throw Exception("should find added commit as shallow")
@@ -37,7 +37,7 @@ func testShallowFileIsShallow(): Unit {
 func testShallowFileIsNotShallow(): Unit {
     // 对齐 Rust: ShallowFile::is_shallow — not present
     let sf = ShallowFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (sf.isShallow(id)) {
         throw Exception("should not find non-added commit")
     }
@@ -47,8 +47,8 @@ func testShallowFileIsNotShallow(): Unit {
 func testShallowFileMultipleCommits(): Unit {
     // 对齐 Rust: ShallowFile with multiple shallow commits
     let sf = ShallowFile()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     sf.commits.add(id1)
     sf.commits.add(id2)
     if (sf.commits.size != 2) {
@@ -79,8 +79,8 @@ func testShallowFileOpenNonExistent(): Unit {
 func testShallowFileWriteAndRead(): Unit {
     // 对齐 Rust: ShallowFile write → read round-trip
     let sf = ShallowFile()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     sf.commits.add(id1)
     sf.commits.add(id2)
     let testPath = "C:/temp/gix_shallow_test_" + 300000.toString() + ".txt"
@@ -121,8 +121,8 @@ func testShallowFileWriteEmpty(): Unit {
 func testShallowFileIsShallowWithDifferentIds(): Unit {
     // 对齐 Rust: ShallowFile isShallow — 不同 ID 不匹配
     let sf = ShallowFile()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     sf.commits.add(id1)
     if (!sf.isShallow(id1)) {
         throw Exception("id1 should be shallow")
@@ -136,7 +136,7 @@ func testShallowFileIsShallowWithDifferentIds(): Unit {
 func testShallowFileSingleCommitWriteRead(): Unit {
     // 对齐 Rust: ShallowFile single commit write/read
     let sf = ShallowFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     sf.commits.add(id)
     let testPath = "C:/temp/gix_shallow_single_test_" + 300002.toString() + ".txt"
     sf.write(testPath)

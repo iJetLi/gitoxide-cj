@@ -56,8 +56,10 @@ public class NoProgress <: Progress {
     }
 }
 
-// 管道，用于线程间数据传输（简化实现）
+// 管道，用于线程间数据传输
 // 对齐 Rust: gix_features::io::pipe
+// 仓颉差异：当前 SDK 版本无 Channel，使用同步缓冲区模拟
+// 待 Channel 可用后替换为 PipeWriter/PipeReader + Channel 实现
 public class Pipe {
     var buffer: ArrayList<Byte>
     var closed: Bool
@@ -72,6 +74,7 @@ public class Pipe {
     }
 
     // 写入字符串到管道
+    // 对齐 Rust: io::Write::write_all
     public func write(data: String): Unit {
         if (closed) {
             throw Exception("broken pipe")
@@ -87,6 +90,7 @@ public class Pipe {
     }
 
     // 写入字节数组到管道
+    // 对齐 Rust: io::Write::write
     public func writeBytes(data: Array<Byte>): Unit {
         if (closed) {
             throw Exception("broken pipe")
@@ -98,6 +102,7 @@ public class Pipe {
     }
 
     // 读取管道全部内容为字符串
+    // 对齐 Rust: Read::read_to_string
     public func read(): String {
         if (let Some(err) <- error) {
             throw Exception(err)
@@ -108,6 +113,7 @@ public class Pipe {
     }
 
     // 读取管道内容并按行分割
+    // 对齐 Rust: BufRead::lines
     public func readLines(): Array<String> {
         let content = read()
         let lines = content.split("\n")
@@ -120,12 +126,44 @@ public class Pipe {
         result.toArray()
     }
 
+    // 逐行读取
+    // 对齐 Rust: BufRead::read_line
+    public func readLine(): ?String {
+        var newlineIdx: Int64 = -1
+        for (i in 0..buffer.size) {
+            if (buffer[i] == UInt8(10)) {
+                newlineIdx = i
+                break
+            }
+        }
+        if (newlineIdx >= 0) {
+            var line = ArrayList<Byte>()
+            for (i in 0..newlineIdx) {
+                line.add(buffer[i])
+            }
+            var remaining = ArrayList<Byte>()
+            for (i in (newlineIdx + 1)..buffer.size) {
+                remaining.add(buffer[i])
+            }
+            buffer = remaining
+            String.fromUtf8(line.toArray())
+        } else if (buffer.size > 0) {
+            let result = String.fromUtf8(buffer.toArray())
+            buffer = ArrayList<Byte>()
+            result
+        } else {
+            None
+        }
+    }
+
     // 关闭读取端
+    // 对齐 Rust: drop(reader)
     public func closeReader(): Unit {
         closed = true
     }
 
     // 注入错误
+    // 对齐 Rust: Writer::channel.send(Err(io::Error))
     public func injectError(msg: String): Unit {
         error = msg
     }

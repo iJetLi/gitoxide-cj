@@ -16,7 +16,7 @@ import std.collection.*
 @Test
 func testIndexEntryCreation(): Unit {
     // 对齐 Rust: IndexEntry construction
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("src/main.cj", id)
     if (entry.path != "src/main.cj") {
         throw Exception("path mismatch")
@@ -35,7 +35,7 @@ func testIndexEntryCreation(): Unit {
 @Test
 func testIndexEntryDefaultFields(): Unit {
     // 对齐 Rust: IndexEntry default field values
-    let id = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let id = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     let entry = IndexEntry("test.txt", id)
     if (entry.ctimeN != 0) {
         throw Exception("ctimeN should be 0")
@@ -86,7 +86,7 @@ func testIndexFileCreation(): Unit {
 func testIndexFileAddEntry(): Unit {
     // 对齐 Rust: IndexFile::add
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     idx.add(entry)
     if (idx.entries.size != 1) {
@@ -98,7 +98,7 @@ func testIndexFileAddEntry(): Unit {
 func testIndexFileFindEntry(): Unit {
     // 对齐 Rust: IndexFile::find
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("file.txt", id))
     let found = idx.find("file.txt")
     if (found.isNone()) {
@@ -123,8 +123,8 @@ func testIndexFileFindNonExistent(): Unit {
 func testIndexFileMultipleEntries(): Unit {
     // 对齐 Rust: IndexFile — 多个条目
     let idx = IndexFile()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     idx.add(IndexEntry("file1.txt", id1))
     idx.add(IndexEntry("file2.txt", id2))
     idx.add(IndexEntry("dir/file3.txt", id1))
@@ -153,7 +153,7 @@ func testIndexFileWriteAndRead(): Unit {
         let dir = "C:/temp/gix_index_test"
 
         let idx = IndexFile()
-        let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+        let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
         idx.add(IndexEntry("hello.txt", id))
         idx.write(testPath)
 
@@ -180,7 +180,7 @@ func testIndexFileWriteAndRead(): Unit {
 @Test
 func testIndexEntryModeSetting(): Unit {
     // 对齐 Rust: IndexEntry mode field
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("executable.sh", id)
     entry.mode = 0o100755
     if (entry.mode != 0o100755) {
@@ -191,7 +191,7 @@ func testIndexEntryModeSetting(): Unit {
 @Test
 func testIndexEntryTimestamps(): Unit {
     // 对齐 Rust: IndexEntry timestamp fields
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.ctimeS = 1000
     entry.ctimeN = 500000
@@ -214,7 +214,7 @@ func testIndexEntryTimestamps(): Unit {
 @Test
 func testIndexEntryFileSize(): Unit {
     // 对齐 Rust: IndexEntry fileSize field
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.fileSize = 4096
     if (entry.fileSize != 4096) {
@@ -239,7 +239,7 @@ func testIndexFileDefaultVersion(): Unit {
 func testIndexFileRemoveEntry(): Unit {
     // 对齐 Rust: IndexFile remove
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("file.txt", id))
     idx.add(IndexEntry("other.txt", id))
     idx.entries.remove(at: 0)
@@ -255,7 +255,7 @@ func testIndexFileRemoveEntry(): Unit {
 func testIndexFileFindAfterRemove(): Unit {
     // 对齐 Rust: IndexFile find after removal
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("file.txt", id))
     idx.add(IndexEntry("other.txt", id))
     idx.entries.remove(at: 0)
@@ -271,7 +271,7 @@ func testIndexFileFindAfterRemove(): Unit {
 func testIndexFileMultipleAddAndFind(): Unit {
     // 对齐 Rust: IndexFile — 多次添加和查找
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let paths = ["a.txt", "b.txt", "c.txt", "dir/d.txt", "dir/sub/e.txt"]
     for (p in paths) {
         idx.add(IndexEntry(p, id))
@@ -289,7 +289,7 @@ func testIndexFileMultipleAddAndFind(): Unit {
 @Test
 func testIndexEntryFlagsSetting(): Unit {
     // 对齐 Rust: IndexEntry flags field
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = 0x4000
     if (entry.flags != 0x4000) {
@@ -300,7 +300,7 @@ func testIndexEntryFlagsSetting(): Unit {
 @Test
 func testIndexEntryOwnershipFields(): Unit {
     // 对齐 Rust: IndexEntry uid/gid fields
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.uid = 1000
     entry.gid = 1000
@@ -316,7 +316,7 @@ func testIndexEntryOwnershipFields(): Unit {
 @Test
 func testEntryFlagsStageUnconflicted(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Stage::Unconflicted
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     if (((entry.flags >> 12) & 0x3) != 0) {
         throw Exception("stage 0")
@@ -326,7 +326,7 @@ func testEntryFlagsStageUnconflicted(): Unit {
 @Test
 func testEntryFlagsStageBase(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Stage::Base
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = Int64(1) << 12
     if (((entry.flags >> 12) & 0x3) != 1) {
@@ -337,7 +337,7 @@ func testEntryFlagsStageBase(): Unit {
 @Test
 func testEntryFlagsStageOurs(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Stage::Ours
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = Int64(2) << 12
     if (((entry.flags >> 12) & 0x3) != 2) {
@@ -348,7 +348,7 @@ func testEntryFlagsStageOurs(): Unit {
 @Test
 func testEntryFlagsStageTheirs(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Stage::Theirs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = Int64(3) << 12
     if (((entry.flags >> 12) & 0x3) != 3) {
@@ -359,7 +359,7 @@ func testEntryFlagsStageTheirs(): Unit {
 @Test
 func testEntryFlagsStageRoundtrip(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Stage 往返转换
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     let stages = [0, 1, 2, 3]
     for (s in stages) {
@@ -373,7 +373,7 @@ func testEntryFlagsStageRoundtrip(): Unit {
 @Test
 func testEntryFlagsExtended(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Flags::EXTENDED
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = 1 << 14
     if ((entry.flags & (1 << 14)) == 0) {
@@ -384,7 +384,7 @@ func testEntryFlagsExtended(): Unit {
 @Test
 func testEntryFlagsAssumeValid(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Flags::ASSUME_VALID
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = 1 << 15
     if ((entry.flags & (1 << 15)) == 0) {
@@ -395,7 +395,7 @@ func testEntryFlagsAssumeValid(): Unit {
 @Test
 func testEntryFlagsIntentToAdd(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Flags::INTENT_TO_ADD
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = 1 << 29
     if ((entry.flags & (1 << 29)) == 0) {
@@ -406,7 +406,7 @@ func testEntryFlagsIntentToAdd(): Unit {
 @Test
 func testEntryFlagsSkipWorktree(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Flags::SKIP_WORKTREE
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = 1 << 30
     if ((entry.flags & (1 << 30)) == 0) {
@@ -417,7 +417,7 @@ func testEntryFlagsSkipWorktree(): Unit {
 @Test
 func testEntryFlagsPathLenMask(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — PATHLEN_MASK
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = 0x0FFF
     if ((entry.flags & 0x0FFF) != 0x0FFF) {
@@ -428,7 +428,7 @@ func testEntryFlagsPathLenMask(): Unit {
 @Test
 func testEntryFlagsExtendedAndIntentToAdd(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — EXTENDED + INTENT_TO_ADD 组合
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file.txt", id)
     entry.flags = (1 << 14) | (1 << 29)
     if ((entry.flags & (1 << 14)) == 0) {
@@ -443,7 +443,7 @@ func testEntryFlagsExtendedAndIntentToAdd(): Unit {
 @Test
 func testEntryModeFile(): Unit {
     // 对齐 Rust: gix-index/src/entry/mode.rs — Mode::FILE
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("file", id)
     entry.mode = 0o100644
     if (entry.mode != 0o100644) {
@@ -454,7 +454,7 @@ func testEntryModeFile(): Unit {
 @Test
 func testEntryModeFileExecutable(): Unit {
     // 对齐 Rust: gix-index/src/entry/mode.rs — Mode::FILE_EXECUTABLE
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("fileexecutable", id)
     entry.mode = 0o100755
     if (entry.mode != 0o100755) {
@@ -465,7 +465,7 @@ func testEntryModeFileExecutable(): Unit {
 @Test
 func testEntryModeSymlink(): Unit {
     // 对齐 Rust: gix-index/src/entry/mode.rs — Mode::SYMLINK
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("symlink", id)
     entry.mode = 0o120000
     if (entry.mode != 0o120000) {
@@ -476,7 +476,7 @@ func testEntryModeSymlink(): Unit {
 @Test
 func testEntryModeCommit(): Unit {
     // 对齐 Rust: gix-index/src/entry/mode.rs — Mode::COMMIT
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("commit", id)
     entry.mode = 0o160000
     if (entry.mode != 0o160000) {
@@ -487,7 +487,7 @@ func testEntryModeCommit(): Unit {
 @Test
 func testEntryModeDir(): Unit {
     // 对齐 Rust: gix-index/src/entry/mode.rs — Mode::DIR
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = IndexEntry("dir", id)
     entry.mode = 0o040000
     if (entry.mode != 0o040000) {
@@ -512,7 +512,7 @@ func testEntryModeChangeExecutableBit(): Unit {
 @Test
 func testStatMtimeSDiffers(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::mtime_s differs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e2.mtimeS = 999
@@ -524,7 +524,7 @@ func testStatMtimeSDiffers(): Unit {
 @Test
 func testStatCtimeSDiffers(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::ctime_s differs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e2.ctimeS = 999
@@ -536,7 +536,7 @@ func testStatCtimeSDiffers(): Unit {
 @Test
 func testStatFileSizeDiffers(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::file_size differs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e2.fileSize = 999
@@ -548,7 +548,7 @@ func testStatFileSizeDiffers(): Unit {
 @Test
 func testStatInoDiffers(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::ino differs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e2.ino = 1
@@ -560,7 +560,7 @@ func testStatInoDiffers(): Unit {
 @Test
 func testStatUidDiffers(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::uid differs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e2.uid = 1
@@ -572,7 +572,7 @@ func testStatUidDiffers(): Unit {
 @Test
 func testStatGidDiffers(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::gid differs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e2.gid = 1
@@ -584,7 +584,7 @@ func testStatGidDiffers(): Unit {
 @Test
 func testStatDevDiffers(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::dev differs
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e2.dev = 1
@@ -596,7 +596,7 @@ func testStatDevDiffers(): Unit {
 @Test
 func testStatIsRacySameSecond(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::is_racy_same_second
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("f", id)
     e.mtimeS = 1000
     if (!(e.mtimeS >= 1000)) {
@@ -607,7 +607,7 @@ func testStatIsRacySameSecond(): Unit {
 @Test
 func testStatIsRacyAfterTimestamp(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat::is_racy_after_timestamp
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("f", id)
     e.mtimeS = 1000
     if (e.mtimeS >= 2000) {
@@ -663,7 +663,7 @@ func testEncodeVersion(): Unit {
 func testEncodeEntryCount(): Unit {
     // 对齐 Rust: gix-index/src/encode.rs — 条目数编码
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("a", id))
     idx.add(IndexEntry("b", id))
     let enc = idx.encode()
@@ -743,7 +743,7 @@ func testIndexFileRoundtripMultipleEntries(): Unit {
     let tp = "C:/temp/gix_index_test/rt_multi"
     try {
         let idx = IndexFile()
-        let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+        let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
         idx.add(IndexEntry("a", id))
         idx.add(IndexEntry("b", id))
         idx.add(IndexEntry("c", id))
@@ -771,7 +771,7 @@ func testIndexFileRoundtripPreservesOid(): Unit {
     let tp = "C:/temp/gix_index_test/rt_oid"
     try {
         let idx = IndexFile()
-        let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+        let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
         idx.add(IndexEntry("f.txt", id))
         idx.write(tp)
         let rb = IndexFile.open(tp)
@@ -807,8 +807,8 @@ func testIndexFileRoundtripEmptyIndex(): Unit {
 func testIndexFileFindReturnsCorrectOid(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — IndexFile::find 返回正确 OID
     let idx = IndexFile()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     idx.add(IndexEntry("f1.txt", id1))
     idx.add(IndexEntry("f2.txt", id2))
     let f1 = idx.find("f1.txt")
@@ -831,9 +831,9 @@ func testIndexFileFindReturnsCorrectOid(): Unit {
 func testConflictingEntriesDifferentStages(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — 冲突条目不同 stage
     let idx = IndexFile()
-    let bId = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let oId = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-    let tId = ObjectId.fromHex("496d6428b9cf92981dc9495211e6e1120fb6f2ba")
+    let bId = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oId = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let tId = ObjectId.fromHexOrThrow("496d6428b9cf92981dc9495211e6e1120fb6f2ba")
     let b = IndexEntry("file", bId);
     b.flags = Int64(1) << 12
     idx.add(b)
@@ -862,7 +862,7 @@ func testV4EntryPaths(): Unit {
     // 对齐 Rust: gix-index/src/decode.rs — V4 条目路径前缀压缩
     let idx = IndexFile();
     idx.version = 4
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let ps = ["a", "b", "c", "d/a", "d/b", "d/c", "d/last/123", "d/last/34", "d/last/6", "x"]
     for (p in ps) {
         idx.add(IndexEntry(p, id))
@@ -877,7 +877,7 @@ func testSparseCheckoutSkipWorktree(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — sparse checkout SKIP_WORKTREE
     let idx = IndexFile();
     idx.version = 3
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("d/a", id);
     e1.mode = 0o100644
     e1.flags = (1 << 14) | (1 << 30)
@@ -898,7 +898,7 @@ func testAllFileKinds(): Unit {
     // 对齐 Rust: gix-index/src/entry/mode.rs — 所有文件类型
     let idx = IndexFile();
     idx.version = 2
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let f = IndexEntry("a", id);
     f.mode = 0o100644
     idx.add(f)
@@ -934,10 +934,10 @@ func testAllFileKinds(): Unit {
 @Test
 func testSpecialObjectIds(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — 特殊 ObjectId
-    let eb = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let et = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-    let ti = ObjectId.fromHex("496d6428b9cf92981dc9495211e6e1120fb6f2ba")
-    let cs = ObjectId.fromHex("72d53f787d86a932a25a8537cee236d81846a8f1")
+    let eb = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let et = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let ti = ObjectId.fromHexOrThrow("496d6428b9cf92981dc9495211e6e1120fb6f2ba")
+    let cs = ObjectId.fromHexOrThrow("72d53f787d86a932a25a8537cee236d81846a8f1")
     if (eb.toHexString() != "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391") {
         throw Exception("eb")
     }
@@ -1042,7 +1042,7 @@ func testExtendedFlagsConversion(): Unit {
 func testIndexFileRemoveAllEntries(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — IndexFile::remove_all
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("a", id))
     idx.add(IndexEntry("b", id))
     idx.add(IndexEntry("c", id))
@@ -1064,8 +1064,8 @@ func testIndexFileRemoveAllEntries(): Unit {
 func testIndexFileFindReturnsFirstMatch(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — IndexFile::find 首次匹配
     let idx = IndexFile()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     idx.add(IndexEntry("dup.txt", id1))
     idx.add(IndexEntry("dup.txt", id2))
     let f = idx.find("dup.txt")
@@ -1082,7 +1082,7 @@ func testExtendedFlagsUpgradeVersion(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — 扩展标志版本升级
     let idx = IndexFile();
     idx.version = 2
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("a", id);
     e.flags = 1 << 14
     idx.add(e)
@@ -1103,7 +1103,7 @@ func testExtendedFlagsUpgradeVersion(): Unit {
 func testPrefixedEntries(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — 前缀条目
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("a", id))
     idx.add(IndexEntry("an entry", id))
     idx.add(IndexEntry("d/a", id))
@@ -1133,7 +1133,7 @@ func testPrefixedEntries(): Unit {
 func testEntrySortOrder(): Unit {
     // 对齐 Rust: gix-index/src/entry.rs — 条目排序
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("c", id))
     idx.add(IndexEntry("a", id))
     idx.add(IndexEntry("b", id))
@@ -1154,7 +1154,7 @@ func testEntrySortOrder(): Unit {
 @Test
 func testIndexEntryDevInoFields(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — dev/ino 字段
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("f", id)
     e.dev = 12345
     e.ino = 67890
@@ -1169,7 +1169,7 @@ func testIndexEntryDevInoFields(): Unit {
 @Test
 func testEntryTimeMaxValues(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — 时间最大值
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("f", id)
     e.mtimeS = 2147483647
     e.mtimeN = 123456789
@@ -1186,7 +1186,7 @@ func testSparseCheckoutConeMode(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — sparse checkout cone 模式
     let idx = IndexFile();
     idx.version = 3
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let de = IndexEntry("d", id);
     de.mode = 0o040000
     de.flags = (1 << 14) | (1 << 30)
@@ -1269,7 +1269,7 @@ func testParseCorruptedDataReturnsEmpty(): Unit {
 @Test
 func testEncodeParseRoundtripEntryPath(): Unit {
     // 对齐 Rust: gix-index/src/encode.rs — 条目路径编码解析往返
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let path = "hello.txt"
     let pathBytes = path.toArray()
     let d = ArrayList<Byte>()
@@ -1319,7 +1319,7 @@ func testEncodeParseRoundtripEntryPath(): Unit {
 @Test
 func testEntryStatEquality(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — Stat 相等性
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("f", id)
     let e2 = IndexEntry("f", id)
     e1.ctimeS = 100
@@ -1373,7 +1373,7 @@ func testEntryStatEquality(): Unit {
 @Test
 func testEntryModeTypeChecks(): Unit {
     // 对齐 Rust: gix-index/src/entry/mode.rs — Mode 类型检查
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let ef = IndexEntry("f", id);
     ef.mode = 0o100644
     let ex = IndexEntry("x", id);
@@ -1401,7 +1401,7 @@ func testEntryModeTypeChecks(): Unit {
 func testIndexFileEntrySort(): Unit {
     // 对齐 Rust: gix-index/src/lib.rs — IndexFile 条目排序
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("z.txt", id))
     idx.add(IndexEntry("a.txt", id))
     idx.add(IndexEntry("m.txt", id))
@@ -1430,7 +1430,7 @@ func testIndexFileEntrySort(): Unit {
 @Test
 func testEntryPathSpecialChars(): Unit {
     // 对齐 Rust: gix-index/src/entry.rs — 条目路径特殊字符
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e1 = IndexEntry("path with spaces.txt", id)
     if (e1.path != "path with spaces.txt") {
         throw Exception("spaces")
@@ -1455,7 +1455,7 @@ func testV3ExtendedFlagsRoundtrip(): Unit {
     // 对齐 Rust: gix-index/src/decode.rs — V3 扩展标志往返
     let idx = IndexFile();
     idx.version = 3
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("a", id)
     e.mode = 0o100644
     e.flags = (1 << 14) | (1 << 30)
@@ -1475,7 +1475,7 @@ func testV3ExtendedFlagsRoundtrip(): Unit {
 @Test
 func testMultiEntryEncodeParseRoundtrip(): Unit {
     // 对齐 Rust: gix-index/src/encode.rs — 多条目编码解析往返
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let paths = ["a.txt", "b.txt", "c/d.txt"]
     let d = ArrayList<Byte>()
     for (b in "DIRC".toArray()) {
@@ -1549,7 +1549,7 @@ func testEmptyIndexEncodeParseRoundtrip(): Unit {
 @Test
 func testEntryFlagsStageCombinations(): Unit {
     // 对齐 Rust: gix-index/src/entry/flags.rs — Stage 组合
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let stages = [0, 1, 2, 3]
     for (s in stages) {
         let e = IndexEntry("f", id)
@@ -1573,7 +1573,7 @@ func testEntryFlagsStageCombinations(): Unit {
 @Test
 func testEntryNanosecondTimestamps(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — 纳秒时间戳
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("f", id)
     e.ctimeS = 1700000000
     e.ctimeN = 123456789
@@ -1599,7 +1599,7 @@ func testEntryNanosecondTimestamps(): Unit {
 @Test
 func testEntryLargeFileSize(): Unit {
     // 对齐 Rust: gix-index/src/entry/stat.rs — 大文件尺寸
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let e = IndexEntry("bigfile.bin", id)
     e.fileSize = 4294967295
     if (e.fileSize != 4294967295) {
@@ -1618,16 +1618,75 @@ func testEntryLargeFileSize(): Unit {
 // 对齐 Rust: gix-index/tests/file.rs — IndexFile find 不区分大小写占位
 @Test
 func testIndexFileFindCaseInsensitivePlaceholder(): Unit {
-    // 对齐 Rust: gix-index/src/lib.rs — IndexFile::find 大小写不敏感（占位）
-    // 当前 find 为区分大小写实现；不区分大小写查找为占位，待后续实现
+    // 对齐 Rust: gix-index/src/lib.rs — IndexFile::find 大小写不敏感
     let idx = IndexFile()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     idx.add(IndexEntry("Readme.md", id))
     if (idx.find("Readme.md").isNone()) {
-        throw Exception("exact")
+        throw Exception("exact match should work")
     }
-    if (!idx.find("readme.md").isNone()) {
-        throw Exception("case")
+    // 不区分大小写查找，对齐 Rust: gix_index::File::entry_by_path_icase
+    if (idx.findCaseInsensitive("readme.md").isNone()) {
+        throw Exception("case-insensitive find should work")
     }
-    // 占位：未来应实现不区分大小写查找，使 find("readme.md") 返回 Some
+    if (idx.findCaseInsensitive("README.MD").isNone()) {
+        throw Exception("case-insensitive find should work for all caps")
+    }
+}
+
+@Test
+func testIndexFileHasPathCaseInsensitive(): Unit {
+    // 对齐 Rust: gix_index::File::has_path_icase
+    let idx = IndexFile()
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    idx.add(IndexEntry("src/Main.cj", id))
+    if (!idx.hasPathCaseInsensitive("src/main.cj")) {
+        throw Exception("should find path case-insensitively")
+    }
+    if (!idx.hasPathCaseInsensitive("SRC/MAIN.CJ")) {
+        throw Exception("should find path case-insensitively (all caps)")
+    }
+}
+
+// ============================================================
+// 扩展数据测试 — 对齐 Rust gix-index/src/extension/mod.rs
+// ============================================================
+
+@Test
+func testIndexExtensionCreation(): Unit {
+    // 对齐 Rust: gix_index::extension — 扩展数据结构
+    let ext = IndexExtension("TREE", [1, 2, 3, 4])
+    if (ext.signature != "TREE") {
+        throw Exception("signature should be 'TREE'")
+    }
+    if (ext.data.size != 4) {
+        throw Exception("data size should be 4")
+    }
+}
+
+@Test
+func testIndexFileExtensionsList(): Unit {
+    // 对齐 Rust: gix_index::File::extensions — 扩展数据列表
+    let idx = IndexFile()
+    if (idx.extensions.size != 0) {
+        throw Exception("new index should have no extensions")
+    }
+    idx.extensions.add(IndexExtension("TREE", []))
+    if (idx.extensions.size != 1) {
+        throw Exception("should have 1 extension after adding")
+    }
+}
+
+@Test
+func testIndexEntryFlagsExtended(): Unit {
+    // 对齐 Rust: gix_index::entry::FlagsExtended — 扩展标志位
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let entry = IndexEntry("test.txt", id)
+    if (entry.flagsExtended != 0) {
+        throw Exception("flagsExtended should default to 0")
+    }
+    entry.flagsExtended = 1
+    if (entry.flagsExtended != 1) {
+        throw Exception("flagsExtended should be settable")
+    }
 }

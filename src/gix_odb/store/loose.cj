@@ -240,7 +240,7 @@ public class LooseStore {
                         let fileName = substringFromStr(subPath, sepPos + 1)
                         let hexStr = dirName + fileName
                         try {
-                            let oid = ObjectId.fromHex(hexStr)
+                            let oid = ObjectId.fromHexOrThrow(hexStr)
                             result.add(oid)
                         } catch (_: Exception) {}
                     }

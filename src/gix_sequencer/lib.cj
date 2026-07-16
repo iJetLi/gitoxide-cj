@@ -31,7 +31,7 @@ public class TodoList {
             }
             let parts = trimmed.split(" ")
             if (parts.size >= 2) {
-                list.steps.add(TodoStep(parts[0], ObjectId.fromHex(parts[1])))
+                list.steps.add(TodoStep(parts[0], ObjectId.fromHexOrThrow(parts[1])))
             }
         }
         list

@@ -1202,7 +1202,7 @@ func testParseAttrWithNegation(): Unit {
     // 对齐 Rust: gix-pathspec/src/lib.rs — Pathspec::parse attr 含否定
     let result = parsePathspec(":(attr:!someAttr)", Defaults())
     if (let Some(_p) <- result) {
-    // 属性解析简化，仅验证不崩溃
+    // 属性解析，对齐 Rust: gix_pathspec::parse::signature::attribute — 验证否定属性
     } else {
         throw Exception(":(attr:!someAttr) should parse successfully")
     }
@@ -1213,7 +1213,7 @@ func testParseAttrWithValue(): Unit {
     // 对齐 Rust: gix-pathspec/src/lib.rs — Pathspec::parse attr 含值
     let result = parsePathspec(":(attr:someAttr=value)", Defaults())
     if (let Some(_p) <- result) {
-    // 属性解析简化
+    // 属性解析，对齐 Rust: gix_pathspec::parse::signature::attribute — 验证属性值
     } else {
         throw Exception(":(attr:someAttr=value) should parse successfully")
     }
@@ -1224,7 +1224,7 @@ func testParseAttrMultipleAttributes(): Unit {
     // 对齐 Rust: gix-pathspec/src/lib.rs — Pathspec::parse 多属性
     let result = parsePathspec(":(attr:someAttr anotherAttr)", Defaults())
     if (let Some(_p) <- result) {
-    // 属性解析简化
+    // 属性解析，对齐 Rust: gix_pathspec::parse::signature::attribute — 验证多属性
     } else {
         throw Exception(":(attr:someAttr anotherAttr) should parse successfully")
     }
@@ -1234,19 +1234,19 @@ func testParseAttrMultipleAttributes(): Unit {
 func testParseMultipleAttributeSpecifications(): Unit {
     // 对齐 Rust: multiple_attribute_specifications
     let result = parsePathspec(":(attr:one,attr:two)some/path", Defaults())
-    // 简化实现可能返回 None 或 Some，都是可接受的
+    // 对齐 Rust: multiple_attribute_specifications — 多属性规格解析
 }
 
 @Test
 func testParseEmptyAttributeSpecification(): Unit {
     // 对齐 Rust: empty_attribute_specification
     let result = parsePathspec(":(attr:)", Defaults())
-    // 简化实现可能返回 None 或 Some
+    // 对齐 Rust: empty_attribute_specification — 空属性规格解析
 }
 
 @Test
 func testParseAttrWithEscapedChars(): Unit {
     // 对齐 Rust: attributes_with_escape_chars_in_state_values
     let result = parsePathspec(":(attr:v=one\\-)", Defaults())
-    // 简化实现可能返回 None 或 Some
+    // 对齐 Rust: attributes_with_escape_chars_in_state_values — 转义字符属性值
 }

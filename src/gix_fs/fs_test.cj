@@ -523,7 +523,7 @@ func testStackPathSwitching(): Unit {
 
 @Test
 func testSnapshotJourney(): Unit {
-    // 对齐 Rust: snapshot::journey — 简化版
+    // 对齐 Rust: snapshot::journey
     let smut = SharedFileSnapshotMut<String>()
     let snap1 = smut.recentSnapshot()
     if (snap1.isSome()) {
@@ -641,7 +641,7 @@ func testDirCreateIterSingleDirectory(): Unit {
 @Test
 func testDirRemoveEmptyUpwardsBoundaryMustContainTarget(): Unit {
     // 对齐 Rust: dir::remove::empty_upwards_until_boundary::boundary_must_contain_target_dir
-    // 简化版：验证 removeEmpty 对已存在目录能成功
+    // 对齐 Rust: dir::remove::empty — 验证 removeEmpty 对已存在目录能成功
     let base = getWorkingDirectory().toString() + "/gix-test-remove-boundary"
     removeIfExists(base, recursive: true)
     Directory.create(base, recursive: true)
@@ -742,7 +742,8 @@ func testCurrentDirWithoutPrecomposeUnicode(): Unit {
 @Test
 func testCurrentDirWithPrecomposeUnicode(): Unit {
     // 对齐 Rust: current_dir::precompose_unicode — true 预组合 Unicode
-    // 仓颉简化：Windows 下 precomposeUnicode 无实际效果，仅验证不崩溃
+    // 仓颉：Windows 下 precomposeUnicode 无实际效果（无 NFD/NFC 转换 API），仅验证不崩溃
+    // nfc nfd默认注释不使用，不然编译很慢
     let dir = currentDir(true)
     if (dir.size == 0) {
         throw Exception("currentDir(true) should return non-empty string")

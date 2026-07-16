@@ -271,7 +271,7 @@ func getParentDir(path: String): String {
 }
 
 // 路径规范化：处理 . 和 .. 组件
-// 对齐 Rust: gix-path/src/realpath.rs — 简化版本（不含符号链接解析）
+// 对齐 Rust: gix-path/src/realpath.rs（仓颉无 symlink 元数据 API，不含符号链接解析）
 func normalizePath(path: String): String {
     let parts = path.split("/")
     var stack = ArrayList<String>()

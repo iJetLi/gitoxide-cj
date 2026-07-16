@@ -170,7 +170,7 @@ func testWorktreeCheckoutTreeSingleFile(): Unit {
     // 对齐 Rust: checkout_tree with single file
     let testDir = "C:/temp/gix-wt-single-test-" + 1200000.toString()
     let wt = Worktree(testDir, testDir + "/.git")
-    let oid = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let oid = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let entry = Entry(EntryMode.Regular(), "test.txt", oid)
     let entries = ArrayList<Entry>()
     entries.add(entry)
@@ -240,5 +240,85 @@ func testWorktreeStatusInequalityAllPairs(): Unit {
     }
     if (WorktreeStatus.Deleted == WorktreeStatus.Untracked) {
         throw Exception("Deleted != Untracked")
+    }
+}
+
+
+// ============================================================
+// StackState 测试 - 对齐 gix-worktree/src/stack/state/mod.rs
+// ============================================================
+
+@Test
+func testStackStateVariants(): Unit {
+    let s1 = StackState.CreateDirectoryAndAttributesStack
+    let s2 = StackState.AttributesAndIgnoreStack
+    let s3 = StackState.CreateDirectoryStack
+    match (s1) {
+        case StackState.CreateDirectoryAndAttributesStack => true;
+        case _ => throw Exception("s1 mismatch")
+    }
+    match (s2) {
+        case StackState.AttributesAndIgnoreStack => true;
+        case _ => throw Exception("s2 mismatch")
+    }
+    match (s3) {
+        case StackState.CreateDirectoryStack => true;
+        case _ => throw Exception("s3 mismatch")
+    }
+}
+
+// ============================================================
+// StackStatistics 测试 - 对齐 gix-worktree/src/stack/mod.rs Statistics
+// ============================================================
+
+@Test
+func testStackStatisticsDefaults(): Unit {
+    let stats = StackStatistics()
+    if (stats.platforms != 0) {
+        throw Exception("platforms should be 0")
+    }
+    if (stats.ignoreStatistics.ignoreFilesLoaded != 0) {
+        throw Exception("ignoreFilesLoaded should be 0")
+    }
+    if (stats.ignoreStatistics.patternsMatched != 0) {
+        throw Exception("patternsMatched should be 0")
+    }
+}
+
+// ============================================================
+// PathIdMapping 测试 - 对齐 gix-worktree/src/lib.rs PathIdMapping
+// ============================================================
+
+@Test
+func testPathIdMappingConstruct(): Unit {
+    let m = PathIdMapping("src/main.cj", 42)
+    if (m.path != "src/main.cj") {
+        throw Exception("path mismatch")
+    }
+    if (m.id != 42) {
+        throw Exception("id mismatch")
+    }
+}
+
+// ============================================================
+// IgnoreStackStatistics 测试 - 对齐 gix-worktree/src/stack/state/ignore.rs Statistics
+// ============================================================
+
+@Test
+func testIgnoreStackStatisticsDefaults(): Unit {
+    let stats = IgnoreStackStatistics()
+    if (stats.ignoreFilesLoaded != 0) {
+        throw Exception("ignoreFilesLoaded should be 0")
+    }
+    if (stats.patternsMatched != 0) {
+        throw Exception("patternsMatched should be 0")
+    }
+    stats.ignoreFilesLoaded = 5
+    stats.patternsMatched = 100
+    if (stats.ignoreFilesLoaded != 5) {
+        throw Exception("ignoreFilesLoaded should be 5")
+    }
+    if (stats.patternsMatched != 100) {
+        throw Exception("patternsMatched should be 100")
     }
 }

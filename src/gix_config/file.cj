@@ -173,6 +173,76 @@ public class ConfigFile {
             writeFileContent(p, sb.toString())
         } catch (_: Exception) {}
     }
+
+    // 删除指定键的所有值（多值键删除）
+    // 对齐 Rust: gix_config::File::remove_key
+    // 参数 key - 配置键，格式为 "section.subsection.value" 或 "section.value"
+    // 返回值 - 是否成功删除了至少一个条目
+    public func remove(key: String): Bool {
+        let k = Key.parse(key)
+        if (k.isNone()) {
+            return false
+        }
+        if (let Some(parsed) <- k) {
+            var removed = false
+            for (section in sections) {
+                if (section.header.name == parsed.sectionName) {
+                    if (parsed.subsection.isNone() || section.header.subsection == parsed.subsection) {
+                        let keyLower = toLowerStr(parsed.valueName)
+                        var i = section.entries.size - 1
+                        while (i >= 0) {
+                            if (toLowerStr(section.entries[i].key) == keyLower) {
+                                section.entries.remove(at: i)
+                                removed = true
+                            }
+                            i -= 1
+                        }
+                    }
+                }
+            }
+            removed
+        } else {
+            false
+        }
+    }
+
+    // 验证配置值类型
+    // 对齐 Rust: gix_config_value::Boolean, gix_config_value::Integer
+    // 参数 key - 配置键
+    // 参数 expectedType - 期望的类型（"bool", "int", "string"）
+    // 返回值 - 值是否符合期望类型
+    public func validateValue(key: String, expectedType: String): Bool {
+        let valueOpt = find(key)
+        if (valueOpt.isNone()) {
+            return false
+        }
+        if (let Some(v) <- valueOpt) {
+            if (expectedType == "bool") {
+                let lower = toLowerStr(v)
+                lower == "true" || lower == "false" || lower == "yes" || lower == "no" || lower == "on" || lower == "off" || lower == "1" || lower == "0"
+            } else if (expectedType == "int") {
+                var valid = true
+                var start: Int64 = 0
+                if (v.size > 0 && (v[0] == UInt8(45) || v[0] == UInt8(43))) {
+                    start = 1
+                }
+                if (start >= v.size) {
+                    return false
+                }
+                for (i in start..v.size) {
+                    if (v[i] < UInt8(48) || v[i] > UInt8(57)) {
+                        valid = false
+                        break
+                    }
+                }
+                valid
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    }
 }
 
 func readFileContent(p: String): ?String {

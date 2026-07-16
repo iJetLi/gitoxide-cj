@@ -255,7 +255,7 @@ func testParseTodoUnknownActionDefaultsToPick(): Unit {
 @Test
 func testRebaseStepConstruction(): Unit {
     // 对齐 Rust: RebaseStep 构造
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let step = RebaseStep(RebaseAction.Pick, id)
     if (step.action != RebaseAction.Pick) {
         throw Exception("action should be Pick")

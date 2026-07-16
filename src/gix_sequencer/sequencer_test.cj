@@ -78,7 +78,7 @@ func testTodoListParseEmptyInput(): Unit {
 @Test
 func testTodoStepConstruction(): Unit {
     // 对齐 Rust: TodoStep construction
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let step = TodoStep("squash", id)
     if (step.action != "squash") {
         throw Exception("action mismatch")
@@ -170,8 +170,8 @@ func testTodoListParseInterleavedCommentsAndSteps(): Unit {
 @Test
 func testTodoStepEquality(): Unit {
     // 对齐 Rust: TodoStep — 不同 action 和 commitId
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     let step1 = TodoStep("pick", id1)
     let step2 = TodoStep("pick", id2)
     let step3 = TodoStep("edit", id1)

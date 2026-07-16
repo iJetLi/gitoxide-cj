@@ -1,7 +1,7 @@
 // 文件：imara_diff_test.cj
 // 用途：gix_imara_diff 包的单元测试，对齐 Rust gitoxide gix-imara-diff 测试
 // 所属包：gix.gix_imara_diff
-// 对齐来源：gix-imara-diff/tests/*.rs
+// 对齐来源：gix-imara-diff/tests/*.rs, gix-imara-diff/src/tests.rs
 
 package gitoxide.gix_imara_diff
 
@@ -16,18 +16,62 @@ import std.unittest.*
 func testDiffConstruct(): Unit {
     // 对齐 Rust: Diff::default()
     let d = Diff()
-    if (d.hunks.size != 0) {
-        throw Exception("hunks should be empty initially")
+    if (d.removed.size != 0) {
+        throw Exception("removed should be empty initially")
+    }
+    if (d.added.size != 0) {
+        throw Exception("added should be empty initially")
     }
 }
 
 @Test
-func testDiffWithHunk(): Unit {
-    // 对齐 Rust: Diff 包含差异块
+func testDiffCountAdditions(): Unit {
+    // 对齐 Rust: Diff::count_additions()
     let d = Diff()
-    d.hunks.add(Hunk(1, 3, 1, 3))
-    if (d.hunks.size != 1) {
-        throw Exception("hunks should have 1 entry")
+    d.added.add(true)
+    d.added.add(false)
+    d.added.add(true)
+    if (d.countAdditions() != 2) {
+        throw Exception("should count 2 additions")
+    }
+}
+
+@Test
+func testDiffCountRemovals(): Unit {
+    // 对齐 Rust: Diff::count_removals()
+    let d = Diff()
+    d.removed.add(true)
+    d.removed.add(false)
+    if (d.countRemovals() != 1) {
+        throw Exception("should count 1 removal")
+    }
+}
+
+@Test
+func testDiffIsRemoved(): Unit {
+    // 对齐 Rust: Diff::is_removed()
+    let d = Diff()
+    d.removed.add(true)
+    d.removed.add(false)
+    if (!d.isRemoved(0)) {
+        throw Exception("index 0 should be removed")
+    }
+    if (d.isRemoved(1)) {
+        throw Exception("index 1 should not be removed")
+    }
+}
+
+@Test
+func testDiffIsAdded(): Unit {
+    // 对齐 Rust: Diff::is_added()
+    let d = Diff()
+    d.added.add(false)
+    d.added.add(true)
+    if (d.isAdded(0)) {
+        throw Exception("index 0 should not be added")
+    }
+    if (!d.isAdded(1)) {
+        throw Exception("index 1 should be added")
     }
 }
 
@@ -39,192 +83,259 @@ func testDiffWithHunk(): Unit {
 func testHunkConstruct(): Unit {
     // 对齐 Rust: Hunk { old_start, old_len, new_start, new_len }
     let h = Hunk(1, 5, 1, 7)
-    if (h.oldStart != 1) {
-        throw Exception("oldStart should be 1")
-    }
-    if (h.oldLen != 5) {
-        throw Exception("oldLen should be 5")
-    }
-    if (h.newStart != 1) {
-        throw Exception("newStart should be 1")
-    }
-    if (h.newLen != 7) {
-        throw Exception("newLen should be 7")
-    }
-    if (h.lines.size != 0) {
-        throw Exception("lines should be empty initially")
+    if (h.oldStart != 1) { throw Exception("oldStart should be 1") }
+    if (h.oldLen != 5) { throw Exception("oldLen should be 5") }
+    if (h.newStart != 1) { throw Exception("newStart should be 1") }
+    if (h.newLen != 7) { throw Exception("newLen should be 7") }
+}
+
+@Test
+func testHunkIsPureInsertion(): Unit {
+    // 对齐 Rust: Hunk::is_pure_insertion()
+    let h = Hunk(1, 0, 1, 3)
+    if (!h.isPureInsertion()) { throw Exception("should be pure insertion") }
+    let h2 = Hunk(1, 2, 1, 3)
+    if (h2.isPureInsertion()) { throw Exception("should not be pure insertion") }
+}
+
+@Test
+func testHunkIsPureRemoval(): Unit {
+    // 对齐 Rust: Hunk::is_pure_removal()
+    let h = Hunk(1, 3, 1, 0)
+    if (!h.isPureRemoval()) { throw Exception("should be pure removal") }
+    let h2 = Hunk(1, 3, 1, 2)
+    if (h2.isPureRemoval()) { throw Exception("should not be pure removal") }
+}
+
+// ============================================================
+// Interner 测试 — 对齐 gix-imara-diff/src/intern.rs
+// ============================================================
+
+@Test
+func testInternerIntern(): Unit {
+    // 对齐 Rust: Interner::intern()
+    let interner = Interner()
+    let t1 = interner.intern("hello")
+    let t2 = interner.intern("world")
+    let t3 = interner.intern("hello")
+    if (t1 != t3) { throw Exception("same string should get same token") }
+    if (t1 == t2) { throw Exception("different strings should get different tokens") }
+    if (interner.numTokens() != 2) { throw Exception("should have 2 distinct tokens") }
+}
+
+@Test
+func testInternerGet(): Unit {
+    // 对齐 Rust: Index<Token> for Interner
+    let interner = Interner()
+    let t = interner.intern("test")
+    let s = interner.get(t)
+    if (s.isNone()) { throw Exception("should find token") }
+    if (s.getOrThrow() != "test") { throw Exception("token should map back to 'test'") }
+}
+
+@Test
+func testInternerClear(): Unit {
+    // 对齐 Rust: Interner::clear()
+    let interner = Interner()
+    interner.intern("a")
+    interner.intern("b")
+    interner.clear()
+    if (interner.numTokens() != 0) { throw Exception("should have 0 tokens after clear") }
+}
+
+// ============================================================
+// InternedInput 测试 — 对齐 gix-imara-diff/src/intern.rs
+// ============================================================
+
+@Test
+func testInternedInputNew(): Unit {
+    // 对齐 Rust: InternedInput::new()
+    let input = InternedInput.new("abc\ndef\n", "abc\ndefg\n")
+    if (input.before.size != 2) { throw Exception("before should have 2 lines") }
+    if (input.after.size != 2) { throw Exception("after should have 2 lines") }
+    if (input.interner.numTokens() != 3) { throw Exception("should have 3 distinct tokens") }
+}
+
+@Test
+func testInternedInputClear(): Unit {
+    // 对齐 Rust: InternedInput::clear()
+    let input = InternedInput.new("abc", "def")
+    input.clear()
+    if (input.before.size != 0) { throw Exception("before should be empty after clear") }
+    if (input.after.size != 0) { throw Exception("after should be empty after clear") }
+}
+
+// ============================================================
+// diffLines 测试 — 对齐 gix-imara-diff/tests/diff.rs
+// ============================================================
+
+@Test
+func testDiffIdentical(): Unit {
+    // 对齐 Rust: diff identical files
+    let input = InternedInput.new("abcdef", "abcdef")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countAdditions() != 0) { throw Exception("identical should have 0 additions") }
+    if (diff.countRemovals() != 0) { throw Exception("identical should have 0 removals") }
+}
+
+@Test
+func testDiffAdditions(): Unit {
+    // 对齐 Rust: diff with pure additions
+    let input = InternedInput.new("abc\n", "abc\ndef\n")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countRemovals() != 0) { throw Exception("should have 0 removals") }
+    if (diff.countAdditions() == 0) { throw Exception("should have additions") }
+}
+
+@Test
+func testDiffDeletions(): Unit {
+    // 对齐 Rust: diff with pure deletions
+    let input = InternedInput.new("abc\ndef\n", "abc\n")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countAdditions() != 0) { throw Exception("should have 0 additions") }
+    if (diff.countRemovals() == 0) { throw Exception("should have removals") }
+}
+
+@Test
+func testDiffModifications(): Unit {
+    // 对齐 Rust: diff with modifications
+    let input = InternedInput.new("abcdef", "abcdefg")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countRemovals() == 0 && diff.countAdditions() == 0) {
+        throw Exception("should have some changes")
     }
 }
 
 @Test
-func testHunkWithLines(): Unit {
-    // 对齐 Rust: Hunk 包含差异行
-    let h = Hunk(1, 1, 1, 1)
-    h.lines.add(DiffLine(LineKind.Context, "unchanged"))
-    h.lines.add(DiffLine(LineKind.Deletion, "removed"))
-    h.lines.add(DiffLine(LineKind.Addition, "added"))
-    if (h.lines.size != 3) {
-        throw Exception("lines should have 3 entries")
+func testDiffEmptyOld(): Unit {
+    // 对齐 Rust: diff with empty old file
+    let input = InternedInput.new("", "abc\ndef\n")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countRemovals() != 0) { throw Exception("should have 0 removals") }
+    if (diff.countAdditions() != 2) { throw Exception("should have 2 additions, got " + diff.countAdditions().toString()) }
+}
+
+@Test
+func testDiffEmptyNew(): Unit {
+    // 对齐 Rust: diff with empty new file
+    let input = InternedInput.new("abc\ndef\n", "")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countAdditions() != 0) { throw Exception("should have 0 additions") }
+    if (diff.countRemovals() != 2) { throw Exception("should have 2 removals, got " + diff.countRemovals().toString()) }
+}
+
+@Test
+func testDiffBothEmpty(): Unit {
+    // 对齐 Rust: diff both empty
+    let input = InternedInput.new("", "")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countAdditions() != 0) { throw Exception("should have 0 additions") }
+    if (diff.countRemovals() != 0) { throw Exception("should have 0 removals") }
+}
+
+@Test
+func testDiffMixed(): Unit {
+    // 对齐 Rust: diff with mixed changes
+    let input = InternedInput.new("abcd", "axcy")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    if (diff.countRemovals() == 0 && diff.countAdditions() == 0) {
+        throw Exception("should have some changes")
     }
 }
 
 // ============================================================
-// DiffLine 测试 — 对齐 gix-imara-diff/tests/line.rs
+// diffLinesWith 测试 — 对齐 gix-imara-diff 公共 API
 // ============================================================
 
 @Test
-func testDiffLineContext(): Unit {
-    // 对齐 Rust: DiffLine { kind: Context, text }
-    let line = DiffLine(LineKind.Context, "hello")
-    if (line.kind != LineKind.Context) {
-        throw Exception("kind should be Context")
-    }
-    if (line.text != "hello") {
-        throw Exception("text should be 'hello'")
-    }
+func testDiffLinesWithMyers(): Unit {
+    // 对齐 Rust: Diff::compute(Algorithm::Myers, &input)
+    let diff = diffLinesWith(Algorithm.Myers, "abc\ndef\n", "abc\ndefg\n")
+    if (diff.hunks.size == 0) { throw Exception("should have hunks") }
 }
 
 @Test
-func testDiffLineAddition(): Unit {
-    // 对齐 Rust: DiffLine { kind: Addition, text }
-    let line = DiffLine(LineKind.Addition, "new line")
-    if (line.kind != LineKind.Addition) {
-        throw Exception("kind should be Addition")
-    }
-}
-
-@Test
-func testDiffLineDeletion(): Unit {
-    // 对齐 Rust: DiffLine { kind: Deletion, text }
-    let line = DiffLine(LineKind.Deletion, "old line")
-    if (line.kind != LineKind.Deletion) {
-        throw Exception("kind should be Deletion")
-    }
+func testDiffLinesWithIdentical(): Unit {
+    // 对齐 Rust: Diff::compute() 对相同内容
+    let diff = diffLinesWith(Algorithm.Myers, "abc\ndef\n", "abc\ndef\n")
+    if (diff.hunks.size != 0) { throw Exception("identical content should have no hunks") }
 }
 
 // ============================================================
-// LineKind 测试 — 对齐 gix-imara-diff/src/line.rs
+// diffLines (旧版 API) 测试
 // ============================================================
 
 @Test
-func testLineKindVariants(): Unit {
-    // 对齐 Rust: LineKind 枚举变体
-    let kinds = ArrayList<LineKind>()
-    kinds.add(LineKind.Context)
-    kinds.add(LineKind.Addition)
-    kinds.add(LineKind.Deletion)
-    if (kinds.size != 3) {
-        throw Exception("should have 3 LineKind variants")
-    }
+func testDiffLinesOldApi(): Unit {
+    let oldLines = ArrayList<String>()
+    oldLines.add("abc")
+    oldLines.add("def")
+    let newLines = ArrayList<String>()
+    newLines.add("abc")
+    newLines.add("defg")
+    let diff = diffLines(oldLines, newLines)
+    if (diff.hunks.size == 0) { throw Exception("should have hunks") }
 }
 
 // ============================================================
-// diffLines 函数测试 — 对齐 gix-imara-diff/tests/diff_lines.rs
+// Token 测试
 // ============================================================
 
 @Test
-func testDiffLinesIdentical(): Unit {
-    // 对齐 Rust: diffLines 对相同内容应产生全部 Context 行
-    let old = ArrayList<String>()
-    old.add("line1")
-    old.add("line2")
-    let new_ = ArrayList<String>()
-    new_.add("line1")
-    new_.add("line2")
-    let result = diffLines(old, new_)
-    if (result.hunks.size != 1) {
-        throw Exception("should have 1 hunk")
-    }
-    if (result.hunks[0].lines.size != 2) {
-        throw Exception("should have 2 context lines")
-    }
-    if (result.hunks[0].lines[0].kind != LineKind.Context) {
-        throw Exception("first line should be Context")
-    }
-    if (result.hunks[0].lines[1].kind != LineKind.Context) {
-        throw Exception("second line should be Context")
+func testTokenEquality(): Unit {
+    let t1 = Token(1)
+    let t2 = Token(1)
+    let t3 = Token(2)
+    if (t1 != t2) { throw Exception("same value tokens should be equal") }
+    if (t1 == t3) { throw Exception("different value tokens should not be equal") }
+}
+
+// ============================================================
+// Algorithm 枚举测试
+// ============================================================
+
+@Test
+func testAlgorithmValues(): Unit {
+    // 对齐 Rust: Algorithm 枚举
+    let _myers = Algorithm.Myers
+    let _histogram = Algorithm.Histogram
+    let _minimal = Algorithm.MyersMinimal
+}
+
+// ============================================================
+// Diff hunks() 测试
+// ============================================================
+
+@Test
+func testDiffHunksFromCompute(): Unit {
+    // 对齐 Rust: Diff::hunks()
+    let input = InternedInput.new("abc", "axc")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    let hunks = diff.computeHunks()
+    if (hunks.size == 0) { throw Exception("should have hunks") }
+    // 第一个 hunk 应该是 b->x 的修改
+    let firstHunk = hunks[0]
+    if (firstHunk.oldLen == 0 && firstHunk.newLen == 0) {
+        throw Exception("hunk should have some changes")
     }
 }
 
 @Test
-func testDiffLinesModification(): Unit {
-    // 对齐 Rust: diffLines 对修改行应产生 Deletion + Addition
-    let old = ArrayList<String>()
-    old.add("old line")
-    let new_ = ArrayList<String>()
-    new_.add("new line")
-    let result = diffLines(old, new_)
-    if (result.hunks[0].lines.size != 2) {
-        throw Exception("should have 2 lines (deletion + addition)")
-    }
-    if (result.hunks[0].lines[0].kind != LineKind.Deletion) {
-        throw Exception("first line should be Deletion")
-    }
-    if (result.hunks[0].lines[1].kind != LineKind.Addition) {
-        throw Exception("second line should be Addition")
-    }
+func testDiffHunksPureAddition(): Unit {
+    // 对齐 Rust: Diff::hunks() 纯新增
+    let input = InternedInput.new("", "abc")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    let hunks = diff.computeHunks()
+    if (hunks.size != 1) { throw Exception("should have 1 hunk") }
+    if (!hunks[0].isPureInsertion()) { throw Exception("should be pure insertion") }
 }
 
 @Test
-func testDiffLinesEmptyOld(): Unit {
-    // 对齐 Rust: 旧文件为空，新文件有内容
-    let old = ArrayList<String>()
-    let new_ = ArrayList<String>()
-    new_.add("added1")
-    new_.add("added2")
-    let result = diffLines(old, new_)
-    if (result.hunks[0].lines.size != 2) {
-        throw Exception("should have 2 addition lines")
-    }
-    if (result.hunks[0].lines[0].kind != LineKind.Addition) {
-        throw Exception("first line should be Addition")
-    }
-}
-
-@Test
-func testDiffLinesEmptyNew(): Unit {
-    // 对齐 Rust: 新文件为空，旧文件有内容
-    let old = ArrayList<String>()
-    old.add("removed1")
-    old.add("removed2")
-    let new_ = ArrayList<String>()
-    let result = diffLines(old, new_)
-    if (result.hunks[0].lines.size != 2) {
-        throw Exception("should have 2 deletion lines")
-    }
-    if (result.hunks[0].lines[0].kind != LineKind.Deletion) {
-        throw Exception("first line should be Deletion")
-    }
-}
-
-@Test
-func testDiffLinesBothEmpty(): Unit {
-    // 对齐 Rust: 两个空文件比较
-    let old = ArrayList<String>()
-    let new_ = ArrayList<String>()
-    let result = diffLines(old, new_)
-    if (result.hunks[0].lines.size != 0) {
-        throw Exception("should have 0 lines")
-    }
-}
-
-@Test
-func testDiffLinesMixedChanges(): Unit {
-    // 对齐 Rust: 混合变更（相同 + 修改 + 新增）
-    let old = ArrayList<String>()
-    old.add("same")
-    old.add("changed")
-    old.add("removed")
-    let new_ = ArrayList<String>()
-    new_.add("same")
-    new_.add("modified")
-    new_.add("added")
-    let result = diffLines(old, new_)
-    if (result.hunks.size != 1) {
-        throw Exception("should have 1 hunk")
-    }
-    // 第一行相同 → Context
-    if (result.hunks[0].lines[0].kind != LineKind.Context) {
-        throw Exception("first line should be Context")
-    }
+func testDiffHunksPureDeletion(): Unit {
+    // 对齐 Rust: Diff::hunks() 纯删除
+    let input = InternedInput.new("abc", "")
+    let diff = Diff.compute(Algorithm.Myers, input)
+    let hunks = diff.computeHunks()
+    if (hunks.size != 1) { throw Exception("should have 1 hunk") }
+    if (!hunks[0].isPureRemoval()) { throw Exception("should be pure removal") }
 }

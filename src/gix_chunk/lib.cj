@@ -170,7 +170,7 @@ public class ChunkFile {
     }
 
     // 便捷方法：从字节数组解析 chunk 文件，自动检测 TOC 偏移
-    // 对齐 Rust: gix_chunk::file::Index::from_bytes() 简化版
+    // 对齐 Rust: gix_chunk::file::Index::from_bytes()
     public static func parse(data: Array<Byte>): ?ChunkFile {
         if (data.size < 12) {
             return None
@@ -201,7 +201,7 @@ public class ChunkFile {
 }
 
 // 单个数据块，包含类型、偏移和大小
-// 对齐 Rust: gix_chunk::file::index::Entry 简化
+// 对齐 Rust: gix_chunk::file::index::Entry（Rust 用 Range<Offset>，仓颉用 offset+size 等价表示）
 public class Chunk {
     // 数据块的类型标识
     public var kind: ChunkId
@@ -276,7 +276,7 @@ public class PlannedChunk {
 // ====== 辅助函数 ======
 
 // 读取 4 字节 chunk ID（大端序）
-func readChunkId(data: Array<Byte>, offset: Int64): ChunkId {
+public func readChunkId(data: Array<Byte>, offset: Int64): ChunkId {
     if (offset + 4 > data.size) {
         return 0
     }

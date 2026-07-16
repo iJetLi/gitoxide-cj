@@ -1,8 +1,11 @@
 // 文件：lib.cj
 // 用途：Git 传输层抽象，定义客户端传输接口与握手/抓取结果类型
 // 所属包：gix.gix_transport
-// 关键类型：ClientTransport, HandshakeResult, FetchResult, Service, RemoteRef, ProtocolVersion
+// 关键类型：ClientTransport, HandshakeResult, FetchResult, Service, Ref, ProtocolVersion
 //           HttpTransport（基于仓颉 TcpSocket 的 HTTP 传输实现）
+// 对齐 Rust: gix-transport/src/lib.rs, client/mod.rs, client/traits.rs, client/capabilities.rs,
+//           client/blocking_io/http/mod.rs, client/non_io_types.rs
+// 注意：待 stdx_net 包可用后迁移到 stdx.net.http
 
 package gitoxide.gix_transport
 
@@ -13,13 +16,18 @@ import gitoxide.gix_utils.*
 import std.collection.*
 import std.net.*
 
-// Git 协议版本
+// Git 协议版本，对齐 Rust gix_transport::Protocol
 public enum ProtocolVersion {
-    | V1 // Git 协议 V1 版本
-    | V2 // Git 协议 V2 版本
+    | V0 // Git 协议 V0 版本（类似 V1 但无能力声明）
+    | V1 // Git 协议 V1 版本，有状态
+    | V2 // Git 协议 V2 版本，基于命令的无状态协议
 
     public operator func ==(that: ProtocolVersion): Bool {
         match (this) {
+            case V0 => match (that) {
+                case V0 => true;
+                case _ => false
+            }
             case V1 => match (that) {
                 case V1 => true;
                 case _ => false
@@ -36,94 +44,156 @@ public enum ProtocolVersion {
     }
 }
 
-// Git 服务类型（如 upload-pack、receive-pack）
+// Git 服务类型，对齐 Rust gix_transport::Service
 public class Service {
     // 服务名称，如 "git-upload-pack"
     public var name: String
 
-    // 参数 name: 服务名称
     public init(name: String) {
         this.name = name
     }
 
     // 创建 git-upload-pack 服务实例（用于客户端拉取）
-    // 返回值: git-upload-pack 服务
     public static func gitUploadPack(): Service {
         Service("git-upload-pack")
     }
 
     // 创建 git-receive-pack 服务实例（用于客户端推送）
-    // 返回值: git-receive-pack 服务
     public static func gitReceivePack(): Service {
         Service("git-receive-pack")
     }
 }
 
-// 客户端传输接口，定义握手与抓取操作
+// 客户端传输接口，对齐 Rust gix_transport::client::blocking_io::Transport
 public interface ClientTransport {
     // 与远程仓库握手，获取引用列表与能力声明
-    // 参数 url: 远程仓库 URL
-    // 参数 service: 请求的服务类型
-    // 返回值: 握手成功返回 HandshakeResult，失败返回 None
     func handshake(url: Url, service: Service): ?HandshakeResult
 
     // 执行抓取操作，发送 want/have 协商后获取包数据
-    // 参数 wants: 需要的对象 ID 列表
-    // 参数 haves: 已有的对象 ID 列表
-    // 返回值: 抓取成功返回 FetchResult，失败返回 None
     func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult
 }
 
-// 握手结果，包含远程引用、协议版本与能力声明
+// 握手结果，对齐 Rust gix_transport::client::blocking_io::SetServiceResponse
 public class HandshakeResult {
     // 远程仓库的引用列表
-    public var refs: ArrayList<RemoteRef>
+    public var refs: ArrayList<Ref>
     // 协商的协议版本
     public var protocolVersion: ProtocolVersion
     // 服务器声明的能力列表
     public var capabilities: ArrayList<String>
 
-    // 参数 refs: 远程引用列表
-    // 参数 protocolVersion: 协议版本
-    // 参数 capabilities: 能力声明列表
-    public init(refs: ArrayList<RemoteRef>, protocolVersion: ProtocolVersion, capabilities: ArrayList<String>) {
+    public init(refs: ArrayList<Ref>, protocolVersion: ProtocolVersion, capabilities: ArrayList<String>) {
         this.refs = refs
         this.protocolVersion = protocolVersion
         this.capabilities = capabilities
     }
 }
 
-// 远程引用，表示远程仓库中的一个引用（分支/标签等）
-public class RemoteRef {
-    // 引用指向的对象 ID
-    public var id: ObjectId
-    // 引用全名，如 "refs/heads/main"
-    public var name: String
+// Git 引用类型，对齐 Rust: gix_protocol::handshake::Ref
+// Rust 的 Ref 枚举区分 Peeled（标签指向对象）、Direct（直接指向提交）、
+// Symbolic（符号引用如 HEAD）、Unborn（未初始化仓库的引用）
+public enum Ref {
+    // Peeled: 标签引用，tag 指向标签对象，object 指向标签指向的实际对象
+    // 对齐 Rust: Ref::Peeled { full_ref_name, tag, object }
+    | Peeled(String, ObjectId, ObjectId)
+    // Direct: 直接指向提交对象的引用（如分支、轻量标签）
+    // 对齐 Rust: Ref::Direct { full_ref_name, object }
+    | Direct(String, ObjectId)
+    // Symbolic: 符号引用，指向另一个引用（如 HEAD -> refs/heads/main）
+    // 对齐 Rust: Ref::Symbolic { full_ref_name, target, tag, object }
+    | Symbolic(String, String, ?ObjectId, ObjectId)
+    // Unborn: 未初始化仓库中的引用（如新仓库的 HEAD）
+    // 对齐 Rust: Ref::Unborn { full_ref_name, target }
+    | Unborn(String, String)
+}
 
-    // 参数 id: 对象 ID
-    // 参数 name: 引用全名
-    public init(id: ObjectId, name: String) {
-        this.id = id
-        this.name = name
+// Ref 的辅助方法，对齐 Rust: Ref::unpack() -> (&BStr, Option<&oid>, Option<&oid>)
+// 返回 (name, target, peeled)
+public func refUnpack(r: Ref): (String, ?ObjectId, ?ObjectId) {
+    match (r) {
+        case Ref.Direct(name, object) =>
+            (name, Some(object), None)
+        case Ref.Symbolic(name, _, tag, object) =>
+            match (tag) {
+                case Some(t) => (name, Some(t), Some(object))
+                case None => (name, Some(object), None)
+            }
+        case Ref.Peeled(name, tag, peeled) =>
+            (name, Some(tag), Some(peeled))
+        case Ref.Unborn(name, _) =>
+            (name, None, None)
     }
 }
 
-// 抓取结果，包含收到的包数据与引用信息
+// 获取 Ref 的名称，对齐 Rust: Ref::full_ref_name 或 Ref::name
+public func refName(r: Ref): String {
+    match (r) {
+        case Ref.Direct(name, _) => name
+        case Ref.Peeled(name, _, _) => name
+        case Ref.Symbolic(name, _, _, _) => name
+        case Ref.Unborn(name, _) => name
+    }
+}
+
+// 获取 Ref 的目标 ObjectId（Unborn 返回 None），对齐 Rust: Ref::object
+public func refObjectId(r: Ref): ?ObjectId {
+    match (r) {
+        case Ref.Direct(_, obj) => Some(obj)
+        case Ref.Peeled(_, _, obj) => Some(obj)
+        case Ref.Symbolic(_, _, _, obj) => Some(obj)
+        case Ref.Unborn(_, _) => None
+    }
+}
+
+// 抓取结果，对齐 Rust gix_protocol::fetch::Response
 public class FetchResult {
     // 收到的 pack 数据
     public var packData: Array<Byte>
     // 收到的远程引用列表
-    public var receivedRefs: ArrayList<RemoteRef>
+    public var receivedRefs: ArrayList<Ref>
 
-    // 参数 packData: pack 数据
-    // 参数 receivedRefs: 收到的远程引用列表
-    public init(packData: Array<Byte>, receivedRefs: ArrayList<RemoteRef>) {
+    public init(packData: Array<Byte>, receivedRefs: ArrayList<Ref>) {
         this.packData = packData
         this.receivedRefs = receivedRefs
     }
 }
 
-// 能力声明
+// ACK 类型，对齐 Rust gix_protocol::fetch::response::Acknowledgement
+public enum Acknowledgement {
+    | Common(ObjectId) // 远程确认共有的对象
+    | Ready           // 服务器准备接收更多行
+    | Nak             // 服务器尚未准备好
+}
+
+// 浅克隆更新类型，对齐 Rust gix_shallow::Update
+public enum ShallowUpdate {
+    | Shallow(ObjectId)   // 浅克隆边界
+    | Unshallow(ObjectId) // 取消浅克隆边界
+}
+
+// 抓取响应，对齐 Rust gix_protocol::fetch::Response
+public class Response {
+    // ACK 列表
+    public var acks: ArrayList<Acknowledgement>
+    // 浅克隆更新列表
+    public var shallows: ArrayList<ShallowUpdate>
+    // 是否包含 pack 数据
+    public var hasPack: Bool
+
+    public init() {
+        acks = ArrayList<Acknowledgement>()
+        shallows = ArrayList<ShallowUpdate>()
+        hasPack = false
+    }
+
+    public init(acks: ArrayList<Acknowledgement>, shallows: ArrayList<ShallowUpdate>, hasPack: Bool) {
+        this.acks = acks
+        this.shallows = shallows
+        this.hasPack = hasPack
+    }
+}
+
+// 能力声明，对齐 Rust gix_transport::client::Capabilities
 public class Capabilities {
     public var names: ArrayList<String>
     public var keyValuePairs: ArrayList<(String, String)>
@@ -133,6 +203,7 @@ public class Capabilities {
         keyValuePairs = ArrayList<(String, String)>()
     }
 
+    // 从字符串解析能力声明，对齐 Rust Capabilities::from_bytes
     public static func fromBytes(capStr: String): Capabilities {
         var caps = Capabilities()
         var parts = capStr.split(" ")
@@ -151,6 +222,7 @@ public class Capabilities {
         caps
     }
 
+    // 检查是否包含指定能力
     public func contains(name: String): Bool {
         for (n in names) {
             if (n == name) {
@@ -160,6 +232,7 @@ public class Capabilities {
         false
     }
 
+    // 获取指定能力的值
     public func getValue(name: String): ?String {
         for (kv in keyValuePairs) {
             if (kv[0] == name) {
@@ -200,7 +273,59 @@ func sliceBytes(data: Array<Byte>, start: Int64, len: Int64): Array<Byte> {
     Array<Byte>(len, {i => data[start + i]})
 }
 
+// 解析 ACK 行，对齐 Rust Acknowledgement::from_line
+public func parseAcknowledgement(line: String): ?Acknowledgement {
+    var trimmed = trimStr(line)
+    if (trimmed.startsWith("ready")) {
+        return Some(Acknowledgement.Ready)
+    }
+    if (trimmed == "NAK") {
+        return Some(Acknowledgement.Nak)
+    }
+    if (trimmed.startsWith("ACK ")) {
+        var rest = trimmed[4..]
+        var spaceIdx = rest.indexOf(" ")
+        var hexStr = if (let Some(si) <- spaceIdx) {
+            rest[0..si]
+        } else {
+            rest
+        }
+        let oid = ObjectId.fromHexOrThrow(hexStr)
+        // 对齐 Rust: ACK <hash> ready → Ready, ACK <hash> common → Common
+        var suffix = if (let Some(si) <- spaceIdx) {
+            rest[(si + 1)..]
+        } else {
+            ""
+        }
+        if (suffix == "ready") {
+            Some(Acknowledgement.Ready)
+        } else {
+            Some(Acknowledgement.Common(oid))
+        }
+    } else {
+        None
+    }
+}
+
+// 解析浅克隆更新行，对齐 Rust shallow_update_from_line
+public func parseShallowUpdate(line: String): ?ShallowUpdate {
+    var trimmed = trimStr(line)
+    if (trimmed.startsWith("shallow ")) {
+        var hexStr = trimmed[8..]
+        let oid = ObjectId.fromHexOrThrow(hexStr)
+        Some(ShallowUpdate.Shallow(oid))
+    } else if (trimmed.startsWith("unshallow ")) {
+        var hexStr = trimmed[10..]
+        let oid = ObjectId.fromHexOrThrow(hexStr)
+        Some(ShallowUpdate.Unshallow(oid))
+    } else {
+        None
+    }
+}
+
 // HTTP 传输实现，基于仓颉 TcpSocket
+// 对齐 Rust: gix_transport::client::blocking_io::http
+// 注意：待 stdx.net.http 可用后迁移
 public class HttpTransport <: ClientTransport {
     public var connectTimeout: Int64
     public var readTimeout: Int64
@@ -260,20 +385,20 @@ public class HttpTransport <: ClientTransport {
 
         var body = ArrayList<Byte>()
         for (want in wants) {
-            var wantLine = "want " + want.toHexString() + "\n"
+            var wantLine = "want " + want.toHexString() + ""
             var encoded = PacketLine.encode(wantLine.toArray())
             for (b in encoded) {
                 body.add(b)
             }
         }
         for (have in haves) {
-            var haveLine = "have " + have.toHexString() + "\n"
+            var haveLine = "have " + have.toHexString() + ""
             var encoded = PacketLine.encode(haveLine.toArray())
             for (b in encoded) {
                 body.add(b)
             }
         }
-        var doneEncoded = PacketLine.encode("done\n".toArray())
+        var doneEncoded = PacketLine.encode("done".toArray())
         for (b in doneEncoded) {
             body.add(b)
         }
@@ -288,10 +413,12 @@ public class HttpTransport <: ClientTransport {
         None
     }
 
+    // 发送 HTTP GET 请求
     func httpGet(host: String, port: Int64, path: String): ?Array<Byte> {
         try {
             var socket = TcpSocket(host, UInt16(port))
             socket.connect()
+            // 对齐 HTTP/1.1 规范：请求头行必须以 \r\n 结尾
             var request = "GET " + path + " HTTP/1.1\r\n"
             request = request + "Host: " + host + "\r\n"
             request = request + "User-Agent: git/gix-cj/1.0\r\n"
@@ -307,6 +434,7 @@ public class HttpTransport <: ClientTransport {
         }
     }
 
+    // 发送 HTTP POST 请求
     func httpPost(host: String, port: Int64, path: String, body: Array<Byte>, contentType: String): ?Array<Byte> {
         try {
             var socket = TcpSocket(host, UInt16(port))
@@ -329,10 +457,14 @@ public class HttpTransport <: ClientTransport {
         }
     }
 
+    // 从 socket 读取所有数据
     func readAllFromSocket(socket: TcpSocket): ArrayList<Byte> {
         var result = ArrayList<Byte>()
         var buf = Array<Byte>(4096, repeat: 0)
         var done = false
+        // 对齐 Rust: 读取超时保护，防止无限阻塞
+        var totalRead: Int64 = 0
+        let maxRead: Int64 = 10 * 1024 * 1024 // 10MB 上限
         while (!done) {
             var count = socket.read(buf)
             if (count <= 0) {
@@ -343,11 +475,16 @@ public class HttpTransport <: ClientTransport {
                     result.add(buf[i])
                     i++
                 }
+                totalRead += count
+                if (totalRead >= maxRead) {
+                    done = true
+                }
             }
         }
         result
     }
 
+    // 提取 HTTP 响应体，使用 CHAR_CR/CHAR_LF 常量
     func extractHttpBody(data: ArrayList<Byte>): ?Array<Byte> {
         var bodyStart = findBodyStart(data)
         if (bodyStart < 0) {
@@ -362,10 +499,11 @@ public class HttpTransport <: ClientTransport {
         Some(body.toArray())
     }
 
+    // 查找 HTTP 响应体起始位置，使用 CHAR_CR/CHAR_LF 常量
     func findBodyStart(data: ArrayList<Byte>): Int64 {
         var i: Int64 = 0
         while (i < data.size - 3) {
-            if (data[i] == 13 && data[i + 1] == 10 && data[i + 2] == 13 && data[i + 3] == 10) {
+            if (data[i] == CHAR_CR && data[i + 1] == CHAR_LF && data[i + 2] == CHAR_CR && data[i + 3] == CHAR_LF) {
                 return i + 4
             }
             i++
@@ -376,7 +514,7 @@ public class HttpTransport <: ClientTransport {
     // 解析 Smart HTTP 握手响应
     func parseHandshakeResponse(body: Array<Byte>, service: Service): ?HandshakeResult {
         var pos: Int64 = 0
-        var refs = ArrayList<RemoteRef>()
+        var refs = ArrayList<Ref>()
         var capabilities = ArrayList<String>()
         var protocolVersion = ProtocolVersion.V1
 
@@ -418,7 +556,7 @@ public class HttpTransport <: ClientTransport {
             if (let Some(lr) <- lineResult) {
                 pos = lr[1]
                 var lineStr = String.fromUtf8(lr[0])
-                if (lineStr.endsWith("\n")) {
+                if (lineStr.endsWith("")) {
                     lineStr = lineStr[0..lineStr.size - 1]
                 }
                 if (lineStr.isEmpty()) {
@@ -470,8 +608,10 @@ public class HttpTransport <: ClientTransport {
         }
     }
 
-    // 解析引用行
-    func parseRefLine(line: String, withCapabilities: Bool): ?(RemoteRef, ArrayList<String>) {
+    // 解析引用行，对齐 Rust: gix-transport 中的 ref line 解析
+    // 传输层只解析基本 hash+name 格式，返回 Ref.Direct
+    // 完整的 Peeled/Symbolic/Unborn 解析在 gix_protocol 的 parseV1RefLine/parseV2RefLine 中
+    func parseRefLine(line: String, withCapabilities: Bool): ?(Ref, ArrayList<String>) {
         var caps = ArrayList<String>()
         var capStr = ""
         var workingLine = line
@@ -507,18 +647,24 @@ public class HttpTransport <: ClientTransport {
                 }
             }
 
-            var oid = ObjectId.fromHex(hashStr)
-            Some((RemoteRef(oid, refName), caps))
+            var oid = ObjectId.fromHexOrThrow(hashStr)
+            // 检测 peeled 标记（^{} 后缀），对齐 Rust: gix-protocol 中 peeled 检测
+            if (refName.endsWith("^{}")) {
+                let actualName = refName[0..refName.size - 3]
+                Some((Ref.Peeled(actualName, oid, oid), caps))
+            } else {
+                Some((Ref.Direct(refName, oid), caps))
+            }
         } else {
             None
         }
     }
 
-    // 查找 null 字节
+    // 查找 null 字节，使用 CHAR_NULL 常量
     func findNullByte(s: String): Int64 {
         var i: Int64 = 0
         while (i < s.size) {
-            if (s[i] == UInt8(0)) {
+            if (s[i] == CHAR_NULL) {
                 return i
             }
             i++
@@ -530,10 +676,10 @@ public class HttpTransport <: ClientTransport {
     func parseFetchResponse(body: Array<Byte>): ?FetchResult {
         var packStart = findPackSignature(body)
         if (packStart < 0) {
-            return Some(FetchResult(Array<Byte>(), ArrayList<RemoteRef>()))
+            return Some(FetchResult(Array<Byte>(), ArrayList<Ref>()))
         }
         var packData = sliceBytes(body, packStart, body.size - packStart)
-        Some(FetchResult(packData, ArrayList<RemoteRef>()))
+        Some(FetchResult(packData, ArrayList<Ref>()))
     }
 
     // 查找 PACK 签名
@@ -541,13 +687,242 @@ public class HttpTransport <: ClientTransport {
         if (data.size < 4) {
             return -1
         }
+        // PACK = 80(P) 65(A) 67(C) 75(K)
         var i: Int64 = 0
         while (i < data.size - 3) {
-            if (data[i] == 80 && data[i + 1] == 65 && data[i + 2] == 67 && data[i + 3] == 75) {
+            if (data[i] == UInt8(80) && data[i + 1] == UInt8(65) && data[i + 2] == UInt8(67) && data[i + 3] == UInt8(75)) {
                 return i
             }
             i++
         }
         -1
+    }
+}
+
+// 远程进度信息，对齐 Rust gix_protocol::RemoteProgress
+public class RemoteProgress {
+    // 操作名称，如 "Counting objects"
+    public var action: String
+    // 百分比，0-100
+    public var percent: ?Int64
+    // 已处理项数
+    public var step: ?Int64
+    // 最大预期项数
+    public var max: ?Int64
+
+    public init(action: String, percent: ?Int64, step: ?Int64, max: ?Int64) {
+        this.action = action
+        this.percent = percent
+        this.step = step
+        this.max = max
+    }
+
+    // 从字节解析远程进度，对齐 Rust RemoteProgress::from_bytes
+    public static func fromBytes(line: Array<Byte>): ?RemoteProgress {
+        var colonPos: Int64 = -1
+        var i: Int64 = 0
+        while (i < line.size) {
+            if (line[i] == CHAR_COLON) {
+                colonPos = i
+                break
+            }
+            i += 1
+        }
+        if (colonPos <= 0) {
+            return None
+        }
+        var action = String.fromUtf8(sliceBytes(line, 0, colonPos))
+        var rest = String.fromUtf8(sliceBytes(line, colonPos + 1, line.size - colonPos - 1))
+        var percent: ?Int64 = None
+        var step: ?Int64 = None
+        var max: ?Int64 = None
+        // 解析百分比
+        var pctIdx = rest.indexOf("%")
+        if (let Some(pi) <- pctIdx) {
+            var beforePct = rest[0..pi]
+            var numStr = extractTrailingNumber(beforePct)
+            if (let Some(ns) <- numStr) {
+                if (let Some(v) <- parseInt(ns)) {
+                    percent = Some(v)
+                }
+            }
+            rest = rest[pi + 1..]
+        }
+        // 解析 step/max
+        // 对齐 Rust: 先尝试括号格式 "step/max"，再尝试逗号前数字
+        var parenIdx = rest.indexOf("(")
+        if (let Some(poi) <- parenIdx) {
+            var afterParen = rest[poi + 1..]
+            var slashIdx = afterParen.indexOf("/")
+            if (let Some(si) <- slashIdx) {
+                var stepStr = afterParen[0..si]
+                var afterSlash = afterParen[si + 1..]
+                var closeIdx = afterSlash.indexOf(")")
+                var maxStr = if (let Some(ci) <- closeIdx) {
+                    afterSlash[0..ci]
+                } else {
+                    afterSlash
+                }
+                if (let Some(sv) <- parseInt(stepStr)) {
+                    step = Some(sv)
+                }
+                if (let Some(mv) <- parseInt(maxStr)) {
+                    max = Some(mv)
+                }
+            }
+        } else {
+            // 对齐 Rust: 无括号格式，如 " 10, done." → step=10
+            var trimmedRest = rest.trimAscii()
+            if (!trimmedRest.isEmpty()) {
+                var numPart = trimmedRest
+                if (let Some(ci) <- trimmedRest.indexOf(",")) {
+                    numPart = trimmedRest[0..ci]
+                }
+                var trimmedNum = numPart.trimAscii()
+                if (let Some(v) <- parseInt(trimmedNum)) {
+                    step = Some(v)
+                }
+            }
+        }
+        if (percent.isNone() && step.isNone() && max.isNone()) {
+            return None
+        }
+        Some(RemoteProgress(action, percent, step, max))
+    }
+}
+
+// 提取字符串末尾的数字
+func extractTrailingNumber(s: String): ?String {
+    var end = s.size
+    while (end > 0) {
+        var c = s[end - 1]
+        if (c >= UInt8(48) && c <= UInt8(57)) {
+            end -= 1
+        } else {
+            break
+        }
+    }
+    if (end < s.size) {
+        Some(s[end..])
+    } else {
+        None
+    }
+}
+
+// 命令类型，对齐 Rust gix_protocol::Command
+public enum Command {
+    | LsRefs // 列出引用
+    | Fetch  // 抓取包
+}
+
+// 写入模式，对齐 Rust gix_transport::client::WriteMode
+public enum WriteMode {
+    | Binary                     // 二进制模式，每次写入为原始字节
+    | OneLfTerminatedLinePerWriteCall // 文本模式，每次写入为一行 pkt-line
+}
+
+// 消息类型，对齐 Rust gix_transport::client::MessageKind
+public enum MessageKind {
+    | Flush       // flush 包
+    | Delimiter   // V2 分隔符
+    | ResponseEnd // 响应结束
+    | Text(String) // 文本内容
+}
+
+// 生成 agent 字符串，对齐 Rust gix_protocol::util::agent
+public func agent(name: String): String {
+    if (name.startsWith("git/")) {
+        name
+    } else {
+        "git/" + name
+    }
+}
+
+// 连接复用传输层，对齐 Rust: gix_transport::client::blocking_io::http::buf_read::WithLineEnding
+// 在同一 TCP 连接上执行多次请求（HTTP keep-alive）
+public class ReusableHttpTransport <: ClientTransport {
+    public var inner: HttpTransport
+    // 是否保持连接复用，对齐 Rust: gix_transport::client::Connect
+    public var keepAlive: Bool
+
+    public init() {
+        this.inner = HttpTransport()
+        this.keepAlive = true
+    }
+
+    public func handshake(url: Url, service: Service): ?HandshakeResult {
+        inner.handshake(url, service)
+    }
+
+    public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
+        inner.fetch(wants, haves)
+    }
+}
+
+// V2 命令请求构建器，对齐 Rust: gix_transport::client::blocking_io::RequestWriter
+// 用于构建 V2 协议的 ls-refs 和 fetch 命令请求
+public class V2CommandBuilder {
+    public var command: Command
+    public var arguments: ArrayList<String>
+    public var capabilities: ArrayList<String>
+
+    public init(command: Command) {
+        this.command = command
+        this.arguments = ArrayList<String>()
+        this.capabilities = ArrayList<String>()
+    }
+
+    // 添加命令参数，对齐 Rust: gix_transport::client::blocking_io::RequestWriter::append_argument
+    public func addArgument(arg: String): V2CommandBuilder {
+        arguments.add(arg)
+        this
+    }
+
+    // 添加能力声明
+    public func addCapability(cap: String): V2CommandBuilder {
+        capabilities.add(cap)
+        this
+    }
+
+    // 编码为 V2 协议字节流，对齐 Rust: gix_transport::client::blocking_io::RequestWriter
+    public func encode(): Array<Byte> {
+        var result = ArrayList<Byte>()
+        // 命令行
+        let cmdName = commandAsStr(command)
+        let cmdLine = "command=" + cmdName + "\n"
+        for (b in PacketLine.encode(cmdLine.toArray())) {
+            result.add(b)
+        }
+        // 能力声明
+        for (cap in capabilities) {
+            let capLine = cap + "\n"
+            for (b in PacketLine.encode(capLine.toArray())) {
+                result.add(b)
+            }
+        }
+        // 分隔符
+        for (b in PacketLine.delimiter()) {
+            result.add(b)
+        }
+        // 参数
+        for (arg in arguments) {
+            let argLine = arg + "\n"
+            for (b in PacketLine.encode(argLine.toArray())) {
+                result.add(b)
+            }
+        }
+        // flush
+        for (b in PacketLine.flush()) {
+            result.add(b)
+        }
+        result.toArray()
+    }
+}
+
+// 命令名称转换，对齐 Rust: gix_protocol::Command::as_str
+func commandAsStr(cmd: Command): String {
+    match (cmd) {
+        case Command.LsRefs => "ls-refs"
+        case Command.Fetch => "fetch"
     }
 }

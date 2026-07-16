@@ -47,7 +47,8 @@ public class Identity {
 }
 
 // 根据路径判断其信任级别
-// 简化实现：Windows 下默认返回完全信任，Linux 下应检查文件所有权
+// 对齐 Rust: gix-sec::trust::from_path_ownership
+// Windows 下默认返回完全信任，Linux 下应检查文件所有权（仓颉无 stat/metadata API 检查所有权）
 // 参数 path：待判断的文件系统路径
 // 返回值：该路径的信任级别
 public func trustForPath(path: String): Trust {

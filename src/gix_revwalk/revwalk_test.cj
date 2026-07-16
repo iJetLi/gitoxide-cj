@@ -11,135 +11,9 @@ import std.collection.*
 import std.unittest.*
 
 // ============================================================
-// RevWalk 测试 — 对齐 gix-revwalk/tests/revwalk.rs
+// 辅助 Provider 类 — 必须在 @Test 函数之前定义
 // ============================================================
 
-@Test
-func testRevWalkConstruct(): Unit {
-    // 对齐 Rust: RevWalk::new(provider)
-    let provider = DummyProvideCommits()
-    let walk = RevWalk(provider)
-    if (walk.queue.size != 0) {
-        throw Exception("queue should be empty initially")
-    }
-    if (walk.visited.size != 0) {
-        throw Exception("visited should be empty initially")
-    }
-}
-
-@Test
-func testRevWalkPush(): Unit {
-    // 对齐 Rust: RevWalk::push(id)
-    let provider = DummyProvideCommits()
-    let walk = RevWalk(provider)
-    let id = ObjectId.null(HashKind.Sha1)
-    walk.push(id)
-    if (walk.queue.size != 1) {
-        throw Exception("queue should have 1 item after push")
-    }
-}
-
-@Test
-func testRevWalkPushChain(): Unit {
-    // 对齐 Rust: RevWalk::push(id1).push(id2)
-    let provider = DummyProvideCommits()
-    let walk = RevWalk(provider)
-    let id1 = ObjectId.null(HashKind.Sha1)
-    let id2 = ObjectId.fromHex("0123456789abcdef0123456789abcdef01234567")
-    walk.push(id1).push(id2)
-    if (walk.queue.size != 2) {
-        throw Exception("queue should have 2 items after two pushes")
-    }
-}
-
-@Test
-func testRevWalkNextWithNoPush(): Unit {
-    // 对齐 Rust: RevWalk::next() 无起始提交时返回 None
-    let provider = DummyProvideCommits()
-    let walk = RevWalk(provider)
-    let result = walk.next()
-    if (!result.isNone()) {
-        throw Exception("next with no push should return None")
-    }
-}
-
-@Test
-func testRevWalkNextReturnsPushedId(): Unit {
-    // 对齐 Rust: RevWalk::next() 返回已 push 的提交
-    let provider = DummyProvideCommits()
-    let walk = RevWalk(provider)
-    let id = ObjectId.null(HashKind.Sha1)
-    walk.push(id)
-    let result = walk.next()
-    if (result.isNone()) {
-        throw Exception("next should return pushed id")
-    }
-}
-
-@Test
-func testRevWalkVisitedAfterNext(): Unit {
-    // 对齐 Rust: next() 后 visited 应包含已处理的提交
-    let provider = DummyProvideCommits()
-    let walk = RevWalk(provider)
-    let id = ObjectId.null(HashKind.Sha1)
-    walk.push(id)
-    walk.next()
-    if (walk.visited.size != 1) {
-        throw Exception("visited should have 1 entry after next()")
-    }
-}
-
-@Test
-func testRevWalkNoDuplicateVisits(): Unit {
-    // 对齐 Rust: RevWalk 自动去重，同一提交不会被访问两次
-    let provider = DummyProvideCommits()
-    let walk = RevWalk(provider)
-    let id = ObjectId.null(HashKind.Sha1)
-    walk.push(id)
-    walk.push(id)
-    let first = walk.next()
-    let second = walk.next()
-    if (first.isNone()) {
-        throw Exception("first next should return id")
-    }
-    if (!second.isNone()) {
-        throw Exception("second next should return None (duplicate)")
-    }
-}
-
-@Test
-func testRevWalkWithParentProvider(): Unit {
-    // 对齐 Rust: RevWalk 遍历时自动将父提交加入队列
-    let parentId = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let provider = SingleParentProvider(parentId)
-    let walk = RevWalk(provider)
-    let id = ObjectId.null(HashKind.Sha1)
-    walk.push(id)
-    let first = walk.next()
-    if (first.isNone()) {
-        throw Exception("first next should return id")
-    }
-    let second = walk.next()
-    if (second.isNone()) {
-        throw Exception("second next should return parent id")
-    }
-}
-
-// ============================================================
-// ProvideCommits 接口测试 — 对齐 gix-revwalk/src/lib.rs
-// ============================================================
-
-@Test
-func testDummyProvideCommitsReturnsNone(): Unit {
-    // 对齐 Rust: gix-revwalk/tests/revwalk.rs — DummyProvideCommits::get_parents returns None
-    let provider = DummyProvideCommits()
-    let id = ObjectId.null(HashKind.Sha1)
-    if (!provider.getParents(id).isNone()) {
-        throw Exception("dummy provider should return None")
-    }
-}
-
-// 测试辅助：DummyProvideCommits 实现 ProvideCommits 接口
 class DummyProvideCommits <: ProvideCommits {
     public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
         None
@@ -159,36 +33,6 @@ class SingleParentProvider <: ProvideCommits {
     }
 }
 
-// 注意：原版 gitoxide 的 revwalk 测试依赖完整的提交图与对象数据库，
-// 仓颉中暂无法实现复杂遍历测试，待 gix_odb 与 gix_test_utils 完善后补充。
-
-// ============================================================
-// RevWalk 多父提交测试 — 对齐 gix-revwalk/tests/revwalk.rs merge commits
-// ============================================================
-
-@Test
-func testRevWalkMergeCommit(): Unit {
-    // 对齐 Rust: RevWalk 遍历合并提交时，两个父提交都应加入队列
-    let parent1 = ObjectId.fromHex("1111111111111111111111111111111111111111")
-    let parent2 = ObjectId.fromHex("2222222222222222222222222222222222222222")
-    let provider = MergeParentProvider(parent1, parent2)
-    let walk = RevWalk(provider)
-    let mergeId = ObjectId.fromHex("3333333333333333333333333333333333333333")
-    walk.push(mergeId)
-    let first = walk.next()
-    if (first.isNone()) {
-        throw Exception("first next should return merge commit")
-    }
-    let second = walk.next()
-    if (second.isNone()) {
-        throw Exception("second next should return first parent")
-    }
-    let third = walk.next()
-    if (third.isNone()) {
-        throw Exception("third next should return second parent")
-    }
-}
-
 class MergeParentProvider <: ProvideCommits {
     let parent1: ObjectId
     let parent2: ObjectId
@@ -204,6 +48,203 @@ class MergeParentProvider <: ProvideCommits {
     }
 }
 
+class LinearChainProvider <: ProvideCommits {
+    let idC: ObjectId
+    let idB: ObjectId
+    let idA: ObjectId
+    init(idC: ObjectId, idB: ObjectId, idA: ObjectId) {
+        this.idC = idC
+        this.idB = idB
+        this.idA = idA
+    }
+    public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
+        let parents = ArrayList<ObjectId>()
+        if (id == idC) {
+            parents.add(idB)
+        } else if (id == idB) {
+            parents.add(idA)
+        }
+        if (parents.size > 0) {
+            Some(parents)
+        } else {
+            None
+        }
+    }
+}
+
+class DummyProvideCommits2 <: ProvideCommits {
+    public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
+        None
+    }
+}
+
+class MergeProvider <: ProvideCommits {
+    let idC: ObjectId
+    let idB: ObjectId
+    let idD: ObjectId
+    init(idC: ObjectId, idB: ObjectId, idD: ObjectId) {
+        this.idC = idC
+        this.idB = idB
+        this.idD = idD
+    }
+    public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
+        let parents = ArrayList<ObjectId>()
+        if (id.toHexString() == idC.toHexString()) {
+            parents.add(idB)
+            parents.add(idD)
+        }
+        Some(parents)
+    }
+}
+
+// ============================================================
+// RevWalk 测试 — 对齐 gix-revwalk/tests/revwalk.rs
+// ============================================================
+
+@Test
+func testRevWalkConstruct(): Unit {
+    let provider = DummyProvideCommits()
+    let walk = RevWalk(provider)
+    if (walk.queue.size != 0) {
+        throw Exception("queue should be empty initially")
+    }
+    if (walk.visited.size != 0) {
+        throw Exception("visited should be empty initially")
+    }
+}
+
+@Test
+func testRevWalkPush(): Unit {
+    let provider = DummyProvideCommits()
+    let walk = RevWalk(provider)
+    let id = ObjectId.null(HashKind.Sha1)
+    walk.push(id)
+    if (walk.queue.size != 1) {
+        throw Exception("queue should have 1 item after push")
+    }
+}
+
+@Test
+func testRevWalkPushChain(): Unit {
+    let provider = DummyProvideCommits()
+    let walk = RevWalk(provider)
+    let id1 = ObjectId.null(HashKind.Sha1)
+    let id2 = ObjectId.fromHexOrThrow("0123456789abcdef0123456789abcdef01234567")
+    walk.push(id1).push(id2)
+    if (walk.queue.size != 2) {
+        throw Exception("queue should have 2 items after two pushes")
+    }
+}
+
+@Test
+func testRevWalkNextWithNoPush(): Unit {
+    let provider = DummyProvideCommits()
+    let walk = RevWalk(provider)
+    let result = walk.next()
+    if (!result.isNone()) {
+        throw Exception("next should return None when no items pushed")
+    }
+}
+
+@Test
+func testRevWalkNextReturnsPushedId(): Unit {
+    let provider = DummyProvideCommits()
+    let walk = RevWalk(provider)
+    let id = ObjectId.null(HashKind.Sha1)
+    walk.push(id)
+    let result = walk.next()
+    if (result.isNone()) {
+        throw Exception("next should return pushed id")
+    }
+}
+
+@Test
+func testRevWalkVisitedAfterNext(): Unit {
+    let provider = DummyProvideCommits()
+    let walk = RevWalk(provider)
+    let id = ObjectId.null(HashKind.Sha1)
+    walk.push(id)
+    walk.next()
+    if (!walk.visited.contains(id.toHexString())) {
+        throw Exception("visited should contain id after next")
+    }
+}
+
+@Test
+func testRevWalkNoDuplicateVisits(): Unit {
+    // 对齐 Rust: RevWalk 不重复访问已访问的提交
+    let parentId = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let provider = SingleParentProvider(parentId)
+    let walk = RevWalk(provider)
+    let id = ObjectId.null(HashKind.Sha1)
+    walk.push(id)
+    walk.next()  // visits id, adds parentId to queue
+    walk.push(parentId)  // parentId is now in queue twice
+    // 第一次 next 返回 parentId（从 provider 添加的）
+    let r1 = walk.next()
+    if (r1.isNone()) {
+        throw Exception("should return parentId on first next")
+    }
+    // 第二次 next 跳过重复的 parentId（因为已访问）
+    let r2 = walk.next()
+    if (!r2.isNone()) {
+        throw Exception("should not revisit parentId (duplicate)")
+    }
+}
+
+@Test
+func testRevWalkWithParentProvider(): Unit {
+    let parentId = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let provider = SingleParentProvider(parentId)
+    let walk = RevWalk(provider)
+    let id = ObjectId.null(HashKind.Sha1)
+    walk.push(id)
+    let r1 = walk.next()
+    if (r1.isNone()) {
+        throw Exception("should get pushed id")
+    }
+    let r2 = walk.next()
+    if (r2.isNone()) {
+        throw Exception("should get parent id")
+    }
+}
+
+@Test
+func testDummyProvideCommitsReturnsNone(): Unit {
+    let provider = DummyProvideCommits()
+    let result = provider.getParents(ObjectId.null(HashKind.Sha1))
+    if (!result.isNone()) {
+        throw Exception("DummyProvideCommits should return None")
+    }
+}
+
+// ============================================================
+// RevWalk 多父提交测试 — 对齐 gix-revwalk/tests/revwalk.rs merge commits
+// ============================================================
+
+@Test
+func testRevWalkMergeCommit(): Unit {
+    // 对齐 Rust: RevWalk 遍历合并提交时，两个父提交都应加入队列
+    let parent1 = ObjectId.fromHexOrThrow("1111111111111111111111111111111111111111")
+    let parent2 = ObjectId.fromHexOrThrow("2222222222222222222222222222222222222222")
+    let provider = MergeParentProvider(parent1, parent2)
+    let walk = RevWalk(provider)
+    let mergeId = ObjectId.fromHexOrThrow("3333333333333333333333333333333333333333")
+    walk.push(mergeId)
+    let first = walk.next()
+    if (first.isNone()) {
+        throw Exception("first next should return merge commit")
+    }
+    let second = walk.next()
+    if (second.isNone()) {
+        throw Exception("second next should return first parent")
+    }
+    let third = walk.next()
+    if (third.isNone()) {
+        throw Exception("third next should return second parent")
+    }
+}
+
 // ============================================================
 // RevWalk 线性链遍历测试 — 对齐 gix-revwalk/tests/revwalk.rs linear chain
 // ============================================================
@@ -211,9 +252,9 @@ class MergeParentProvider <: ProvideCommits {
 @Test
 func testRevWalkLinearChain(): Unit {
     // 对齐 Rust: RevWalk 线性链遍历 (A → B → C → None)
-    let idC = ObjectId.fromHex("cccccccccccccccccccccccccccccccccccccccc")
-    let idB = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    let idA = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let idC = ObjectId.fromHexOrThrow("cccccccccccccccccccccccccccccccccccccccc")
+    let idB = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let idA = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let provider = LinearChainProvider(idC, idB, idA)
     let walk = RevWalk(provider)
     walk.push(idC)
@@ -235,31 +276,6 @@ func testRevWalkLinearChain(): Unit {
     }
 }
 
-class LinearChainProvider <: ProvideCommits {
-    let idC: ObjectId
-    let idB: ObjectId
-    let idA: ObjectId
-    init(idC: ObjectId, idB: ObjectId, idA: ObjectId) {
-        this.idC = idC
-        this.idB = idB
-        this.idA = idA
-    }
-    public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
-        let parents = ArrayList<ObjectId>()
-        if (id == idC) {
-            parents.add(idB)
-        } else if (id == idB) {
-            parents.add(idA)
-        }
-        // idA has no parents
-        if (parents.size > 0) {
-            Some(parents)
-        } else {
-            None
-        }
-    }
-}
-
 // ============================================================
 // RevWalk 多起点遍历测试 — 对齐 gix-revwalk 多起点
 // ============================================================
@@ -267,11 +283,11 @@ class LinearChainProvider <: ProvideCommits {
 @Test
 func testRevWalkMultipleStartsConvergence(): Unit {
     // 对齐 Rust: RevWalk 两个起点在同一提交汇聚后不重复访问
-    let idA = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let idA = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let provider = SingleParentProvider(idA)
     let walk = RevWalk(provider)
-    let id1 = ObjectId.fromHex("1111111111111111111111111111111111111111")
-    let id2 = ObjectId.fromHex("2222222222222222222222222222222222222222")
+    let id1 = ObjectId.fromHexOrThrow("1111111111111111111111111111111111111111")
+    let id2 = ObjectId.fromHexOrThrow("2222222222222222222222222222222222222222")
     walk.push(id1)
     walk.push(id2)
     // 两个起点都 push，遍历不会重复访问 idA
@@ -300,17 +316,11 @@ func testRevWalkVisitedContainsHexStrings(): Unit {
     // 对齐 Rust: visited 集合使用十六进制字符串作为键
     let provider = DummyProvideCommits2()
     let walk = RevWalk(provider)
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     walk.push(id)
     walk.next()
     if (!walk.visited.contains("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")) {
         throw Exception("visited should contain hex string of processed id")
-    }
-}
-
-class DummyProvideCommits2 <: ProvideCommits {
-    public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
-        None
     }
 }
 
@@ -323,7 +333,7 @@ func testGraphInsertAndGet(): Unit {
     // 对齐 Rust: Graph::get_or_insert_commit()
     let provider = DummyProvideCommits2()
     let graph = Graph(provider)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let node = CommitNode(id, [], None, 1000, UInt8(0))
     graph.insertCommit(id, node)
     let found = graph.get(id)
@@ -340,7 +350,7 @@ func testGraphClearCommitData(): Unit {
     // 对齐 Rust: Graph::clear_commit_data()
     let provider = DummyProvideCommits2()
     let graph = Graph(provider)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let node = CommitNode(id, [], None, 1000, UInt8(15))
     graph.insertCommit(id, node)
     graph.clearCommitData(UInt8(0))
@@ -358,7 +368,7 @@ func testGraphContains(): Unit {
     // 对齐 Rust: Graph::contains()
     let provider = DummyProvideCommits2()
     let graph = Graph(provider)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     if (graph.contains(id)) {
         throw Exception("should not contain uninserted commit")
     }
@@ -374,7 +384,7 @@ func testGraphGetOrInsertDefault(): Unit {
     // 对齐 Rust: Graph::get_or_insert_default()
     let provider = DummyProvideCommits2()
     let graph = Graph(provider)
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     let node = graph.getOrInsertDefault(id)
     if (node.id.toHexString() != id.toHexString()) {
         throw Exception("node id mismatch")
@@ -385,6 +395,8 @@ func testGraphGetOrInsertDefault(): Unit {
     let node2 = graph.getOrInsertDefault(id)
     // 两次 getOrInsertDefault 应返回同一个节点（引用相等）
     if (node.id.toHexString() != node2.id.toHexString()) {
+        throw Exception("should return same node on second call")
+    }
 }
 
 // ============================================================
@@ -395,8 +407,8 @@ func testGraphGetOrInsertDefault(): Unit {
 func testPriorityQueueInsertPop(): Unit {
     // 对齐 Rust: PriorityQueue::insert() + pop()
     let pq = PriorityQueue()
-    let id1 = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let id2 = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let id1 = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id2 = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
     pq.insert(GenThenTime(1, 100), id1)
     pq.insert(GenThenTime(2, 200), id2)
     if (pq.len() != 2) {
@@ -416,9 +428,9 @@ func testPriorityQueueInsertPop(): Unit {
 func testPriorityQueueOrder(): Unit {
     // 对齐 Rust: PriorityQueue 按 generation+time 排序
     let pq = PriorityQueue()
-    let id1 = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let id2 = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    let id3 = ObjectId.fromHex("cccccccccccccccccccccccccccccccccccccccc")
+    let id1 = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id2 = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let id3 = ObjectId.fromHexOrThrow("cccccccccccccccccccccccccccccccccccccccc")
     // 相同 generation，不同 time
     pq.insert(GenThenTime(1, 100), id1)
     pq.insert(GenThenTime(1, 300), id3)
@@ -445,7 +457,7 @@ func testPriorityQueueEmpty(): Unit {
     if (!pq.isEmpty()) {
         throw Exception("new queue should be empty")
     }
-    let id = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let id = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     pq.insert(GenThenTime(1, 100), id)
     if (pq.isEmpty()) {
         throw Exception("queue with item should not be empty")
@@ -459,9 +471,9 @@ func testPriorityQueueEmpty(): Unit {
 @Test
 func testAncestorsTraversal(): Unit {
     // 对齐 Rust: Ancestors 遍历
-    let idA = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let idB = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    let idC = ObjectId.fromHex("cccccccccccccccccccccccccccccccccccccccc")
+    let idA = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let idB = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let idC = ObjectId.fromHexOrThrow("cccccccccccccccccccccccccccccccccccccccc")
     let provider = LinearChainProvider(idC, idB, idA)
     let graph = Graph(provider)
     let nodeA = CommitNode(idA, [], Some(0), 1000, UInt8(0))
@@ -484,10 +496,10 @@ func testAncestorsTraversal(): Unit {
 @Test
 func testAncestorsFirstParent(): Unit {
     // 对齐 Rust: Ancestors first_parent 选项
-    let idA = ObjectId.fromHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    let idB = ObjectId.fromHex("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    let idC = ObjectId.fromHex("cccccccccccccccccccccccccccccccccccccccc")
-    let idD = ObjectId.fromHex("dddddddddddddddddddddddddddddddddddddddd")
+    let idA = ObjectId.fromHexOrThrow("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    let idB = ObjectId.fromHexOrThrow("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    let idC = ObjectId.fromHexOrThrow("cccccccccccccccccccccccccccccccccccccccc")
+    let idD = ObjectId.fromHexOrThrow("dddddddddddddddddddddddddddddddddddddddd")
     // C 有两个父提交 B 和 D，first_parent 只走 B
     let provider = MergeProvider(idC, idB, idD)
     let graph = Graph(provider)
@@ -503,30 +515,11 @@ func testAncestorsFirstParent(): Unit {
     ancestors.push(idC)
     var visited = ArrayList<String>()
     while (let Some(id) <- ancestors.next()) {
-        visited.add(id.toHexString().substring(0, 8))
+        visited.add(id.toHexString())
     }
     // first_parent: C → B → A，不应访问 D
     if (visited.size != 3) {
         throw Exception("first_parent should visit 3 commits, got " + visited.size.toString())
-    }
-}
-
-class MergeProvider <: ProvideCommits {
-    let idC: ObjectId
-    let idB: ObjectId
-    let idD: ObjectId
-    init(idC: ObjectId, idB: ObjectId, idD: ObjectId) {
-        this.idC = idC
-        this.idB = idB
-        this.idD = idD
-    }
-    public func getParents(id: ObjectId): ?ArrayList<ObjectId> {
-        let parents = ArrayList<ObjectId>()
-        if (id.toHexString() == idC.toHexString()) {
-            parents.add(idB)
-            parents.add(idD)
-        }
-        Some(parents)
     }
 }
 
@@ -546,7 +539,7 @@ func testGenThenTimeCompare(): Unit {
     if (a.compareTo(c) >= 0) {
         throw Exception("same generation, time 100 < 200, should be negative")
     }
-    if (a.compareTo(a) != 0) {
+    if (!(a.compareTo(a) == 0)) {
         throw Exception("same should be 0")
     }
 }

@@ -88,7 +88,7 @@ func testCommitGraphFileLookupWithRealId(): Unit {
     // 对齐 Rust: graph.lookup(真实 ObjectId)
     // 【无法对齐】同上，lookup 为占位实现
     let f = CommitGraphFile("/tmp/commit-graph")
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (!f.lookup(id).isNone()) {
         throw Exception("placeholder lookup should return None for any id")
     }
@@ -190,8 +190,8 @@ func testCommitGraphFileLookupMultipleIds(): Unit {
     let f = CommitGraphFile("/tmp/commit-graph")
     let ids = [
         ObjectId.null(HashKind.Sha1),
-        ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
-        ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+        ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"),
+        ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     ]
     for (id in ids) {
         let result = f.lookup(id)

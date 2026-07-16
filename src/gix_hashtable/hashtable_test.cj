@@ -363,7 +363,7 @@ func testObjectIdMapDefault(): Unit {
 func testObjectIdMapInsertAndGet(): Unit {
     // 对齐 Rust: ObjectIdMap::insert + get
     let map = ObjectIdMap<String>()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     map.insert(id, "empty blob")
     let result = map.get(id)
     if (result != Some("empty blob")) {
@@ -375,7 +375,7 @@ func testObjectIdMapInsertAndGet(): Unit {
 func testObjectIdMapInsertReturnsOld(): Unit {
     // 对齐 Rust: ObjectIdMap::insert — 返回旧值
     let map = ObjectIdMap<Int64>()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let old1 = map.insert(id, 1)
     if (!old1.isNone()) {
         throw Exception("first insert should return None")
@@ -393,7 +393,7 @@ func testObjectIdMapInsertReturnsOld(): Unit {
 func testObjectIdMapGetNonExistent(): Unit {
     // 对齐 Rust: ObjectIdMap::get — 不存在的键
     let map = ObjectIdMap<String>()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (map.get(id).isSome()) {
         throw Exception("get for non-existent key should return None")
     }
@@ -403,7 +403,7 @@ func testObjectIdMapGetNonExistent(): Unit {
 func testObjectIdMapContains(): Unit {
     // 对齐 Rust: ObjectIdMap::contains
     let map = ObjectIdMap<Int64>()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     if (map.contains(id)) {
         throw Exception("should not contain key before insert")
     }
@@ -417,7 +417,7 @@ func testObjectIdMapContains(): Unit {
 func testObjectIdMapRemove(): Unit {
     // 对齐 Rust: ObjectIdMap::remove
     let map = ObjectIdMap<String>()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     map.insert(id, "value")
     let removed = map.remove(id)
     if (removed != Some("value")) {
@@ -435,9 +435,9 @@ func testObjectIdMapRemove(): Unit {
 func testObjectIdMapMultipleObjectIds(): Unit {
     // 对齐 Rust: ObjectIdMap — 多个不同 ObjectId
     let map = ObjectIdMap<Int64>()
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
-    let id3 = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id3 = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     map.insert(id1, 1)
     map.insert(id2, 2)
     map.insert(id3, 3)
@@ -461,11 +461,11 @@ func testObjectIdMapShardingByFirstByte(): Unit {
     // 验证不同首字节的 ObjectId 分布到不同分片
     let map = ObjectIdMap<Int64>()
     // 首字节为 0xe6
-    let id1 = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id1 = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     // 首字节为 0x4b
-    let id2 = ObjectId.fromHex("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
+    let id2 = ObjectId.fromHexOrThrow("4b825dc642cb6eb9a060e54bf8d69288fbee4904")
     // 首字节为 0x00
-    let id3 = ObjectId.fromHex("0000000000000000000000000000000000000000")
+    let id3 = ObjectId.fromHexOrThrow("0000000000000000000000000000000000000000")
     map.insert(id1, 100)
     map.insert(id2, 200)
     map.insert(id3, 300)
@@ -485,7 +485,7 @@ func testObjectIdMapInsertImmutable(): Unit {
     // 对齐 Rust: gix_pack::data::output::count::objects::util::InsertImmutable for ObjectIdMap<()>
     // insert 返回 None 表示首次插入（键不存在），返回 Some 表示键已存在
     let map = ObjectIdMap<Bool>()
-    let id = ObjectId.fromHex("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+    let id = ObjectId.fromHexOrThrow("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
     let first = map.insert(id, true)
     if (!first.isNone()) {
         throw Exception("first insert should return None (key was new)")
