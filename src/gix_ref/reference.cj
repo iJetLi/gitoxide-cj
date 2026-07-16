@@ -36,6 +36,15 @@ public class Reference {
         parseReference(data, hashKind)
     }
 
+    // 从字节数据解析引用，使用指定的引用名
+    // 参数 data：引用文件的原始字节数据
+    // 参数 hashKind：哈希算法类型
+    // 参数 name：引用名
+    // 返回值：解析成功返回 Reference，失败返回 None
+    public static func fromBytesWithName(data: Array<Byte>, hashKind: HashKind, name: FullName): ?Reference {
+        parseReferenceWithName(data, hashKind, name)
+    }
+
     // 获取引用的类型（对象引用或符号引用）
     // 返回值：引用类型枚举值
     public func kind(): RefKind {
@@ -151,6 +160,54 @@ func parseObjectIdRef(data: Array<Byte>, hashKind: HashKind): ?Reference {
     let id = idOpt.getOrThrow()
     let name = FullName("HEAD")
     Some(Reference(name, Target.Object(id), None))
+}
+
+// 解析引用数据，使用指定的引用名
+func parseReferenceWithName(data: Array<Byte>, hashKind: HashKind, refName: FullName): ?Reference {
+    if (data.size == 0) {
+        return None
+    }
+    if (data.size > 5) {
+        var isSym = true
+        let prefix = "ref: "
+        var i: Int64 = 0
+        while (i < 5) {
+            if (data[i] != prefix.toArray()[i]) {
+                isSym = false
+                break
+            }
+            i += 1
+        }
+        if (isSym) {
+            let nameStart: Int64 = 5
+            var nameEnd = data.size
+            if (data[data.size - 1] == UInt8(10)) {
+                nameEnd = nameEnd - 1
+            }
+            let targetName = bytesToStringRef(data, nameStart, nameEnd)
+            let targetFullName = FullName.tryFrom(targetName)
+            if (let Some(fn) <- targetFullName) {
+                return Some(Reference(refName, Target.Symbolic(fn), None))
+            }
+            return None
+        }
+    }
+    parseObjectIdRefWithName(data, hashKind, refName)
+}
+
+// 解析直接引用，使用指定的引用名
+func parseObjectIdRefWithName(data: Array<Byte>, hashKind: HashKind, refName: FullName): ?Reference {
+    var end = data.size
+    if (end > 0 && data[end - 1] == UInt8(10)) {
+        end -= 1
+    }
+    let hexStr = bytesToStringRef(data, 0, end)
+    let idOpt = ObjectId.fromHex(hexStr)
+    if (idOpt.isNone()) {
+        return None
+    }
+    let id = idOpt.getOrThrow()
+    Some(Reference(refName, Target.Object(id), None))
 }
 
 // 将字节数组的指定范围转换为字符串
