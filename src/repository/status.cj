@@ -118,7 +118,8 @@ public class StatusQuery {
     // 判断路径是否为目录
     func isDirectory(path: String): Bool {
         try {
-            exists(path)
+            let _ = Directory.readFrom(path)
+            true
         } catch (_: Exception) {
             false
         }
