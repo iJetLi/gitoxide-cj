@@ -189,13 +189,15 @@ public class RemoteQuery {
                     let localName = dst[0..dst.size - 2] + suffix
                     // 检查本地引用状态
                     let status = checkLocalRefStatus(localName, `ref`)
-                    return Some(RefMapping(refName, localName, status, forced))
+                    let oid = refObjectId(`ref`)
+                    return Some(RefMapping(refName, localName, status, forced, oid))
                 }
             } else {
                 // 精确匹配
                 if (refName == src) {
                     let status = checkLocalRefStatus(dst, `ref`)
-                    return Some(RefMapping(refName, dst, status, forced))
+                    let oid = refObjectId(`ref`)
+                    return Some(RefMapping(refName, dst, status, forced, oid))
                 }
             }
         }
@@ -250,12 +252,14 @@ public class RefMapping {
     public var localRef: String
     public var status: String
     public var forced: Bool
+    public var objectId: ?ObjectId
 
-    public init(remoteRef: String, localRef: String, status: String, forced: Bool) {
+    public init(remoteRef: String, localRef: String, status: String, forced: Bool, objectId: ?ObjectId) {
         this.remoteRef = remoteRef
         this.localRef = localRef
         this.status = status
         this.forced = forced
+        this.objectId = objectId
     }
 }
 
