@@ -398,3 +398,165 @@ func testSubmoduleQueryBareRepo(): Unit {
         throw Exception("bare repo should have no submodules")
     }
 }
+
+@Test
+func testCommitSignQueryVerifyUnsigned(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = CommitSignQuery(repo)
+    let result = query.verify("HEAD")
+    if (!result.startsWith("Error:")) {
+        throw Exception("verify on bare repo should return error, got: " + result)
+    }
+}
+
+@Test
+func testCommitSignQuerySignNoGpg(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = CommitSignQuery(repo)
+    let result = query.sign("HEAD")
+    if (!result.isNone()) {
+        throw Exception("sign on bare repo without GPG should return None")
+    }
+}
+
+@Test
+func testRemoteQueryUrlNoConfig(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let urls = query.url("origin", false, false)
+    if (urls.size != 0) {
+        throw Exception("bare repo without config should have no URLs")
+    }
+}
+
+@Test
+func testRemoteQueryUrlPushNoConfig(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let urls = query.url("origin", true, false)
+    if (urls.size != 0) {
+        throw Exception("bare repo without config should have no push URLs")
+    }
+}
+
+@Test
+func testRemoteQueryUrlAllNoConfig(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let urls = query.url("origin", false, true)
+    if (urls.size != 0) {
+        throw Exception("bare repo without config should have no URLs (all)")
+    }
+}
+
+@Test
+func testRemoteQueryRefsNoNetwork(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let result = query.refs("origin", false)
+    if (!result.isNone()) {
+        throw Exception("refs without network should return None")
+    }
+}
+
+@Test
+func testRemoteQueryRefMapNoNetwork(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let result = query.refMap("origin", false)
+    if (!result.isNone()) {
+        throw Exception("ref-map without network should return None")
+    }
+}
+
+@Test
+func testRemoteQueryResolveUrlDirect(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("https://github.com/example/repo.git")
+    if (url.isNone()) {
+        throw Exception("direct URL should be resolved")
+    }
+    if (url.getOrElse("") != "https://github.com/example/repo.git") {
+        throw Exception("direct URL should be returned as-is")
+    }
+}
+
+@Test
+func testRemoteQueryResolveUrlSsh(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("ssh://git@github.com/example/repo.git")
+    if (url.isNone()) {
+        throw Exception("SSH URL should be resolved")
+    }
+}
+
+@Test
+func testRemoteQueryResolveUrlGit(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("git://github.com/example/repo.git")
+    if (url.isNone()) {
+        throw Exception("git:// URL should be resolved")
+    }
+}
+
+@Test
+func testRemoteQueryResolveUrlFile(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("file:///tmp/repo.git")
+    if (url.isNone()) {
+        throw Exception("file:// URL should be resolved")
+    }
+}
+
+@Test
+func testRemoteQueryResolveUrlHttp(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("http://example.com/repo.git")
+    if (url.isNone()) {
+        throw Exception("http:// URL should be resolved")
+    }
+}
+
+@Test
+func testRemoteQueryResolveNameNoConfig(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("origin")
+    if (!url.isNone()) {
+        throw Exception("remote name without config should return None")
+    }
+}
+
+@Test
+func testRefMappingCreation(): Unit {
+    let mapping = RefMapping("refs/heads/main", "refs/remotes/origin/main", "[new]", true, None)
+    if (mapping.remoteRef != "refs/heads/main") {
+        throw Exception("remoteRef mismatch")
+    }
+    if (mapping.localRef != "refs/remotes/origin/main") {
+        throw Exception("localRef mismatch")
+    }
+    if (mapping.status != "[new]") {
+        throw Exception("status mismatch")
+    }
+    if (!mapping.forced) {
+        throw Exception("forced should be true")
+    }
+}
+
+@Test
+func testRefMappingWithOid(): Unit {
+    let oid = ObjectId.fromHexOrThrow("1fca93d7da9194216eeb77ae04c19559bbffb1c5")
+    let mapping = RefMapping("refs/heads/main", "refs/remotes/origin/main", "[up-to-date]", false, Some(oid))
+    if (mapping.objectId.isNone()) {
+        throw Exception("objectId should be present")
+    }
+    if (mapping.status != "[up-to-date]") {
+        throw Exception("status should be [up-to-date]")
+    }
+}
