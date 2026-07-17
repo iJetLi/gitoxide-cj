@@ -49,35 +49,6 @@ public class FileStore {
                 n = file.read(buf)
             }
             file.close()
-            Reference.fromBytes(allBytes.toArray(), hashKind)
-        } catch (_: Exception) {
-            None
-        }
-    }
-
-    // 根据引用全名查找引用，保留引用名
-    // 参数 name：引用的完整名称
-    // 返回值：找到返回 Reference（名称为传入的 name），未找到或读取失败返回 None
-    public func findWithName(name: FullName): ?Reference {
-        let p = refPath(name.value)
-        if (!exists(p)) {
-            return None
-        }
-        try {
-            let file = File(p, OpenMode.Read)
-            var allBytes = ArrayList<UInt8>()
-            var buf = Array<UInt8>(4096, {_ => UInt8(0)})
-            var n = file.read(buf)
-            while (n > 0) {
-                var i: Int64 = 0
-                while (i < n) {
-                    allBytes.add(buf[i])
-                    i += 1
-                }
-                buf = Array<UInt8>(4096, {_ => UInt8(0)})
-                n = file.read(buf)
-            }
-            file.close()
             Reference.fromBytesWithName(allBytes.toArray(), hashKind, name)
         } catch (_: Exception) {
             None
@@ -136,7 +107,7 @@ public class FileStore {
             if (isDir(fullPath)) {
                 collectRefs(fullPath, refName, result)
             } else {
-                let refOpt = findWithName(FullName(refName))
+                let refOpt = find(FullName(refName))
                 if (let Some(r) <- refOpt) {
                     result.add(r)
                 }
