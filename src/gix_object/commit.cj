@@ -278,8 +278,8 @@ func parseCommit(data: Array<Byte>, hashKind: HashKind): ?CommitRef {
                 while (true) {
                     let extra = parseAnyHeaderField(data, pos)
                     if (let Some(v4) <- extra) {
-                        pos = v4[1]
-                        extraHeaders.add((v4[0], v4[0]))
+                        pos = v4[2]
+                        extraHeaders.add((v4[0], v4[1]))
                     } else {
                         break
                     }
@@ -345,12 +345,11 @@ func parseHeaderField(data: Array<Byte>, start: Int64, name: String): ?(String, 
 // 参数 data：原始字节数据
 // 参数 start：起始解析位置
 // 返回值：解析成功返回 (字段名, 解析结束位置)，失败返回 None
-func parseAnyHeaderField(data: Array<Byte>, start: Int64): ?(String, Int64) {
+func parseAnyHeaderField(data: Array<Byte>, start: Int64): ?(String, String, Int64) {
     var pos = start
     if (pos >= data.size) {
         return None
     }
-    // 遇到空行则头部结束
     if (data[pos] == UInt8(10)) {
         return None
     }
@@ -370,9 +369,18 @@ func parseAnyHeaderField(data: Array<Byte>, start: Int64): ?(String, Int64) {
     if (pos >= data.size) {
         return None
     }
-    let value = bytesToString(data, valueStart, pos)
+    var value = bytesToString(data, valueStart, pos)
     pos += 1
-    Some((name, pos))
+    while (pos < data.size && (data[pos] == UInt8(32) || data[pos] == UInt8(9))) {
+        let lineStart = pos + 1
+        var lineEnd = lineStart
+        while (lineEnd < data.size && data[lineEnd] != UInt8(10)) {
+            lineEnd += 1
+        }
+        value = value + "\n" + bytesToString(data, lineStart, lineEnd)
+        pos = lineEnd + 1
+    }
+    Some((name, value, pos))
 }
 
 // 根据哈希算法类型获取十六进制哈希值的字符长度

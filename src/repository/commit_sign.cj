@@ -14,6 +14,7 @@ import std.collection.*
 import std.fs.*
 import std.io.*
 import gitoxide.gix_command.arg
+import gitoxide.gix_utils.*
 
 // commit sign 查询类
 // 对齐原版：gitoxide-core/src/repository/commit.rs::sign()
@@ -35,24 +36,13 @@ public class CommitSignQuery {
             let dataOpt = repo.readObject(id)
             if (let Some(data) <- dataOpt) {
                 if (let Some(ObjectRef.Commit(c)) <- data.decode()) {
-                    // 检查是否已有签名，对齐原版：commit_ref.extra_headers().pgp_signature().is_some()
                     if (hasPgpSignature(c)) {
-                        // 对齐原版：已签名则直接返回原 ID
                         return Some(id)
                     }
-                    // 调用 GPG 签名
                     let signatureOpt = gpgSignData(data.data)
                     if (let Some(sig) <- signatureOpt) {
-                        // 将签名添加到 extraHeaders
-                        let newHeaders = ArrayList<(String, String)>()
-                        for ((name, value) in c.extraHeaders) {
-                            newHeaders.add((name, value))
-                        }
-                        newHeaders.add(("gpgsig", sig))
-                        // 构造新的 CommitRef 并序列化
-                        let newCommit = CommitRef(c.tree, c.parents, c.author, c.committer, c.encoding, c.message, newHeaders)
-                        let newCommitData = serializeCommitRef(newCommit)
-                        let signedId = repo.writeObject(ObjectKind.Commit, newCommitData)
+                        let signedData = insertSignatureHeader(data.data, sig)
+                        let signedId = repo.writeObject(ObjectKind.Commit, signedData)
                         return Some(signedId)
                     }
                     None
@@ -79,11 +69,11 @@ public class CommitSignQuery {
             if (let Some(data) <- dataOpt) {
                 if (let Some(ObjectRef.Commit(c)) <- data.decode()) {
                     if (hasPgpSignature(c)) {
-                        // 尝试提取签名数据并调用 GPG 验证
                         let sigOpt = extractPgpSignature(c)
                         if (let Some(sig) <- sigOpt) {
-                            let verifyResult = gpgVerifySignature(data.data, sig)
-                            if (verifyResult) {
+                            let unsignedData = stripSignatureHeader(data.data)
+                            let verifyResult = gpgVerifySignature(unsignedData, sig)
+                            if (verifyResult == "OK") {
                                 return "Commit at ${revSpec} has a valid signature"
                             } else {
                                 return "Commit at ${revSpec} has an invalid signature (GPG verification failed)"
@@ -127,6 +117,101 @@ public class CommitSignQuery {
         None
     }
 
+    func insertSignatureHeader(raw: Array<Byte>, signature: String): Array<Byte> {
+        var blankLinePos: Int64 = -1
+        var i: Int64 = 0
+        while (i < raw.size - 1) {
+            if (raw[i] == UInt8(10) && raw[i + 1] == UInt8(10)) {
+                blankLinePos = i + 1
+                break
+            }
+            i += 1
+        }
+        if (blankLinePos < 0) {
+            if (raw.size > 0 && raw[raw.size - 1] == UInt8(10)) {
+                blankLinePos = raw.size
+            } else {
+                return raw
+            }
+        }
+        var sigLines = signature.split("\n")
+        var sigBlock = ArrayList<Byte>()
+        for (b in "gpgsig ".toArray()) { sigBlock.add(b) }
+        var first = true
+        for (line in sigLines) {
+            if (!first) {
+                sigBlock.add(UInt8(10))
+                sigBlock.add(UInt8(32))
+            }
+            for (b in line.toArray()) { sigBlock.add(b) }
+            first = false
+        }
+        sigBlock.add(UInt8(10))
+        var result = ArrayList<Byte>()
+        for (k in 0..blankLinePos) { result.add(raw[k]) }
+        for (b in sigBlock) { result.add(b) }
+        for (k in blankLinePos..raw.size) { result.add(raw[k]) }
+        result.toArray()
+    }
+
+    func stripSignatureHeader(raw: Array<Byte>): Array<Byte> {
+        let gpgsig = "gpgsig ".toArray()
+        let gpgsigSha256 = "gpgsig-sha256 ".toArray()
+        var sigStart: Int64 = -1
+        var sigEnd: Int64 = -1
+        var i: Int64 = 0
+        while (i < raw.size) {
+            if (sigStart < 0) {
+                if (i + gpgsig.size <= raw.size) {
+                    var isMatch = true
+                    for (j in 0..gpgsig.size) {
+                        if (raw[i + j] != gpgsig[j]) {
+                            isMatch = false
+                            break
+                        }
+                    }
+                    if (isMatch) {
+                        sigStart = i
+                        i += 1
+                        continue
+                    }
+                }
+                if (i + gpgsigSha256.size <= raw.size) {
+                    var isMatch2 = true
+                    for (j in 0..gpgsigSha256.size) {
+                        if (raw[i + j] != gpgsigSha256[j]) {
+                            isMatch2 = false
+                            break
+                        }
+                    }
+                    if (isMatch2) {
+                        sigStart = i
+                        i += 1
+                        continue
+                    }
+                }
+            } else {
+                if (raw[i] != UInt8(32) && raw[i] != UInt8(9)) {
+                    if (raw[i - 1] == UInt8(10)) {
+                        sigEnd = i
+                        break
+                    }
+                }
+            }
+            i += 1
+        }
+        if (sigStart >= 0 && sigEnd < 0) {
+            sigEnd = raw.size
+        }
+        if (sigStart >= 0 && sigEnd > sigStart) {
+            var result = ArrayList<Byte>()
+            for (k in 0..sigStart) { result.add(raw[k]) }
+            for (k in sigEnd..raw.size) { result.add(raw[k]) }
+            return result.toArray()
+        }
+        raw
+    }
+
     // 调用 GPG 对数据进行签名
     // 对齐原版：gitoxide-core/src/repository/commit.rs::sign() 中调用 gpg --detach-sign --sign --armor
     // 实现方式：将数据写入临时文件，调用 GPG 签名，读取签名输出
@@ -146,33 +231,32 @@ public class CommitSignQuery {
             // 对齐原版：gpg --keyid-format=long --status-fd=2 --detach-sign --sign --armor
             var p = Prepare("gpg")
             p = arg(p, "--keyid-format=long")
+            p = arg(p, "--status-fd=2")
             p = arg(p, "--detach-sign")
             p = arg(p, "--armor")
             p = arg(p, "--sign")
             p = arg(p, dataPath)
             let result = runPrepare(p)
 
-            // 清理临时文件
             try {
-                if (exists(dataPath)) {
-                    remove(dataPath)
-                }
-                // GPG 可能生成 .gpg 签名文件
                 let sigPath = dataPath + ".asc"
                 if (exists(sigPath)) {
-                    // 读取签名文件
                     let sigData = readFileBytes(sigPath)
                     remove(sigPath)
+                    if (exists(dataPath)) { remove(dataPath) }
                     return Some(String.fromUtf8(sigData))
                 }
                 let gpgPath = dataPath + ".gpg"
                 if (exists(gpgPath)) {
+                    let sigData = readFileBytes(gpgPath)
                     remove(gpgPath)
+                    if (exists(dataPath)) { remove(dataPath) }
+                    return Some(String.fromUtf8(sigData))
                 }
+                if (exists(dataPath)) { remove(dataPath) }
             } catch (_: Exception) {
             }
 
-            // 如果 GPG 成功但没有找到签名文件，检查 stdout
             if (let Some(r) <- result) {
                 if (r.success() && !r.stdout.isEmpty()) {
                     return Some(r.stdout)
@@ -186,25 +270,22 @@ public class CommitSignQuery {
 
     // 调用 GPG 验证签名
     // 对齐原版：gitoxide-core/src/repository/commit.rs::verify() 中调用 gpg --verify
-    func gpgVerifySignature(signedData: Array<Byte>, signature: String): Bool {
+    func gpgVerifySignature(signedData: Array<Byte>, signature: String): String {
         try {
             let tempDir = repo.gitDir + "/tmp"
             if (!exists(tempDir)) {
                 Directory.create(tempDir)
             }
-            // 写入签名文件
             let sigPath = tempDir + "/gix-verify-sig.tmp"
             let sigFile = File(sigPath, OpenMode.Write)
             sigFile.write(signature.toArray())
             sigFile.close()
 
-            // 写入已签名数据
             let dataPath = tempDir + "/gix-verify-data.tmp"
             let dataFile = File(dataPath, OpenMode.Write)
             dataFile.write(signedData)
             dataFile.close()
 
-            // 调用 GPG 验证
             var p2 = Prepare("gpg")
             p2 = arg(p2, "--keyid-format=long")
             p2 = arg(p2, "--status-fd=1")
@@ -213,7 +294,6 @@ public class CommitSignQuery {
             p2 = arg(p2, dataPath)
             let result = runPrepare(p2)
 
-            // 清理临时文件
             try {
                 if (exists(sigPath)) { remove(sigPath) }
                 if (exists(dataPath)) { remove(dataPath) }
@@ -221,11 +301,15 @@ public class CommitSignQuery {
             }
 
             if (let Some(r) <- result) {
-                return r.success()
+                if (r.success()) {
+                    return "OK"
+                } else {
+                    return "FAIL"
+                }
             }
-            false
+            "FAIL no_result"
         } catch (_: Exception) {
-            false
+            "FAIL exception"
         }
     }
 
