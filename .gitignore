@@ -3,3 +3,4 @@ target/
 .cache/
 spec/
 .deveco/
+.idea/
