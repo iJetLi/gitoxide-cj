@@ -98,7 +98,6 @@ public class IndexFile {
     // 返回值: 解析成功返回 IndexFile，文件不存在或解析失败返回 None
     public static func open(path: String): ?IndexFile {
         if (!exists(path)) {
-            println("[IndexFile.open] file not found: " + path)
             return None
         }
         try {
@@ -113,10 +112,8 @@ public class IndexFile {
                 n = file.read(buf)
             }
             file.close()
-            println("[IndexFile.open] read " + bytes.size.toString() + " bytes from " + path)
             let idx = IndexFile()
             idx.parse(bytes.toArray())
-            println("[IndexFile.open] parsed: version=" + idx.version.toString() + " entries=" + idx.entries.size.toString())
             Some(idx)
         } catch (e: Exception) {
             println("[IndexFile.open] exception: " + e.message)
