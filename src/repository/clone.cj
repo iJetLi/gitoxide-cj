@@ -70,8 +70,7 @@ public func clone(url: String, destPath: String, options: CloneOptions): ?Reposi
     }
     let repo = Repository.`init`(destPath, options.bare)
     if (let Some(r) <- repo) {
-        let remote = Remote(options.remoteName, url)
-        r.addRemote(remote)
+        r.addRemote(options.remoteName, url)
         Some(r)
     } else {
         None

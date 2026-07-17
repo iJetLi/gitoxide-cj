@@ -156,8 +156,15 @@ public class Repository {
     }
 
     // 将远程仓库信息写入仓库配置
-    // 参数 remote：远程仓库实例
-    public func addRemote(remote: Remote): Unit {
-        addRemoteToConfig(this, remote)
+    // 参数 remoteName：远程仓库名称
+    // 参数 remoteUrl：远程仓库 URL
+    public func addRemote(remoteName: String, remoteUrl: String): Unit {
+        let configPath = gitDir + "/config"
+        let cfgOpt = ConfigFile.fromPath(configPath)
+        if (let Some(cfg) <- cfgOpt) {
+            cfg.set("remote." + remoteName + ".url", remoteUrl)
+            cfg.set("remote." + remoteName + ".fetch", "+refs/heads/*:refs/remotes/" + remoteName + "/*")
+            cfg.write(configPath)
+        }
     }
 }

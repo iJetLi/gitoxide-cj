@@ -4,3 +4,7 @@ target/
 spec/
 .deveco/
 .idea/
+test*.txt
+debug*.txt
+build*.txt
+*.txt
