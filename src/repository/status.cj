@@ -58,7 +58,8 @@ public class StatusQuery {
                 return WorktreeStatus.Deleted
             }
             let fileBytes = readFileBytes(absPath)
-            let workHash = computeHash(repo.hashKind, ObjectKind.Blob, fileBytes)
+            let normalized = normalizeToLf(fileBytes)
+            let workHash = computeHash(repo.hashKind, ObjectKind.Blob, normalized)
             if (!(workHash == entry.id)) {
                 return WorktreeStatus.Modified
             }
@@ -123,5 +124,20 @@ public class StatusQuery {
         } catch (_: Exception) {
             false
         }
+    }
+
+    func normalizeToLf(data: Array<Byte>): Array<Byte> {
+        let result = ArrayList<Byte>()
+        var i: Int64 = 0
+        while (i < data.size) {
+            if (i + 1 < data.size && data[i] == 13 && data[i + 1] == 10) {
+                result.add(10)
+                i += 2
+            } else {
+                result.add(data[i])
+                i += 1
+            }
+        }
+        result.toArray()
     }
 }
