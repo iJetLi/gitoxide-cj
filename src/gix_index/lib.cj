@@ -115,8 +115,7 @@ public class IndexFile {
             let idx = IndexFile()
             idx.parse(bytes.toArray())
             Some(idx)
-        } catch (e: Exception) {
-            println("[IndexFile.open] exception: " + e.message)
+        } catch (_: Exception) {
             None
         }
     }
@@ -212,7 +211,8 @@ public class IndexFile {
             entry.flags = (Int64(data[flagsStart]) << 8 | Int64(data[flagsStart + 1]))
             entries.add(entry)
             let entryLen = 62 + pathLen
-            let padding = (8 - (entryLen % 8)) % 8
+            let rawPad = (8 - (entryLen % 8)) % 8
+            let padding = if (rawPad == 0) { 8 } else { rawPad }
             pos = entryStart + entryLen + padding
             i += 1
         }
@@ -247,6 +247,46 @@ public class IndexFile {
         result.add(UInt8((entries.size >> 8) & 0xFF))
         result.add(UInt8(entries.size & 0xFF))
         for (entry in entries) {
+            result.add(UInt8((entry.ctimeS >> 24) & 0xFF))
+            result.add(UInt8((entry.ctimeS >> 16) & 0xFF))
+            result.add(UInt8((entry.ctimeS >> 8) & 0xFF))
+            result.add(UInt8(entry.ctimeS & 0xFF))
+            result.add(UInt8((entry.ctimeN >> 24) & 0xFF))
+            result.add(UInt8((entry.ctimeN >> 16) & 0xFF))
+            result.add(UInt8((entry.ctimeN >> 8) & 0xFF))
+            result.add(UInt8(entry.ctimeN & 0xFF))
+            result.add(UInt8((entry.mtimeS >> 24) & 0xFF))
+            result.add(UInt8((entry.mtimeS >> 16) & 0xFF))
+            result.add(UInt8((entry.mtimeS >> 8) & 0xFF))
+            result.add(UInt8(entry.mtimeS & 0xFF))
+            result.add(UInt8((entry.mtimeN >> 24) & 0xFF))
+            result.add(UInt8((entry.mtimeN >> 16) & 0xFF))
+            result.add(UInt8((entry.mtimeN >> 8) & 0xFF))
+            result.add(UInt8(entry.mtimeN & 0xFF))
+            result.add(UInt8((entry.dev >> 24) & 0xFF))
+            result.add(UInt8((entry.dev >> 16) & 0xFF))
+            result.add(UInt8((entry.dev >> 8) & 0xFF))
+            result.add(UInt8(entry.dev & 0xFF))
+            result.add(UInt8((entry.ino >> 24) & 0xFF))
+            result.add(UInt8((entry.ino >> 16) & 0xFF))
+            result.add(UInt8((entry.ino >> 8) & 0xFF))
+            result.add(UInt8(entry.ino & 0xFF))
+            result.add(UInt8((entry.mode >> 24) & 0xFF))
+            result.add(UInt8((entry.mode >> 16) & 0xFF))
+            result.add(UInt8((entry.mode >> 8) & 0xFF))
+            result.add(UInt8(entry.mode & 0xFF))
+            result.add(UInt8((entry.uid >> 24) & 0xFF))
+            result.add(UInt8((entry.uid >> 16) & 0xFF))
+            result.add(UInt8((entry.uid >> 8) & 0xFF))
+            result.add(UInt8(entry.uid & 0xFF))
+            result.add(UInt8((entry.gid >> 24) & 0xFF))
+            result.add(UInt8((entry.gid >> 16) & 0xFF))
+            result.add(UInt8((entry.gid >> 8) & 0xFF))
+            result.add(UInt8(entry.gid & 0xFF))
+            result.add(UInt8((entry.fileSize >> 24) & 0xFF))
+            result.add(UInt8((entry.fileSize >> 16) & 0xFF))
+            result.add(UInt8((entry.fileSize >> 8) & 0xFF))
+            result.add(UInt8(entry.fileSize & 0xFF))
             for (b in entry.id.bytes) {
                 result.add(b)
             }
@@ -257,7 +297,8 @@ public class IndexFile {
                 result.add(b)
             }
             let entryLen = 62 + pathBytes.size
-            let padding = (8 - (entryLen % 8)) % 8
+            let rawPad = (8 - (entryLen % 8)) % 8
+            let padding = if (rawPad == 0) { 8 } else { rawPad }
             var p: Int64 = 0
             while (p < padding) {
                 result.add(UInt8(0))
@@ -276,6 +317,13 @@ public class IndexFile {
             for (b in ext.data) {
                 result.add(b)
             }
+        }
+        let contentBytes = result.toArray()
+        let hasher = GixHasher(HashKind.Sha1)
+        hasher.update(contentBytes)
+        let hashOid = hasher.tryFinalize()
+        for (b in hashOid.bytes) {
+            result.add(b)
         }
         result.toArray()
     }

@@ -26,18 +26,13 @@ public class WriteTreeQuery {
     // 返回值：根 tree 的 ObjectId，无索引时返回 None
     public func writeTree(): ?ObjectId {
         let indexPath = repo.gitDir + "/index"
-        println("[writeTree] indexPath=" + indexPath)
-        println("[writeTree] exists=" + exists(indexPath).toString())
-        println("[writeTree] gitDir=" + repo.gitDir)
         let indexFile = IndexFile.open(indexPath)
         if (let Some(idx) <- indexFile) {
-            println("[writeTree] entries=" + idx.entries.size.toString())
             if (idx.entries.size == 0) {
                 return None
             }
             Some(buildTreeFromEntries(repo, idx.entries))
         } else {
-            println("[writeTree] indexFile is None")
             None
         }
     }
@@ -92,15 +87,12 @@ func buildTreeRecursive(repo: Repository, dirPath: String, dirGroups: ArrayList<
             for (entry in g.entries) {
                 let fileName = baseName(entry.path)
                 let mode = indexModeToEntryMode(entry.mode)
-                println("[buildTree] dir=" + dirPath + " file=" + fileName + " mode=" + mode.value.toString())
                 treeEntries.add(Entry(mode, fileName, entry.id))
             }
         }
     }
     let childDirs = findChildDirs(dirPath, dirGroups)
-    println("[buildTree] dir=" + dirPath + " childDirs=" + childDirs.size.toString())
     for (childDir in childDirs) {
-        println("[buildTree] dir=" + dirPath + " childDir=" + childDir)
         let childTreeId = buildTreeRecursive(repo, childDir, dirGroups)
         let dirName = if (dirPath.size > 0) {
             childDir[(dirPath.size + 1)..]
