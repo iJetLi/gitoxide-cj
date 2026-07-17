@@ -477,8 +477,10 @@ func testRemoteQueryResolveUrlDirect(): Unit {
     if (url.isNone()) {
         throw Exception("direct URL should be resolved")
     }
-    if (url.getOrElse("") != "https://github.com/example/repo.git") {
-        throw Exception("direct URL should be returned as-is")
+    if (let Some(u) <- url) {
+        if (u != "https://github.com/example/repo.git") {
+            throw Exception("direct URL should be returned as-is, got: " + u)
+        }
     }
 }
 
