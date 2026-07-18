@@ -12,6 +12,7 @@ import gitoxide.gix_hash.*
 import gitoxide.gix_config.*
 import gitoxide.gix_ref.*
 import std.collection.*
+import std.process.*
 
 // remote 查询类
 // 对齐原版：gitoxide-core/src/repository/remote.rs
@@ -76,14 +77,18 @@ public class RemoteQuery {
     public func refs(remoteName: String, handshakeInfo: Bool): ?RemoteRefsResult {
         let urlStr = resolveRemoteUrl(remoteName)
         if (let Some(u) <- urlStr) {
-            let transport = HttpTransport()
-            let service = Service.gitUploadPack()
             let url = Url.parse(u)
             if (let Some(parsedUrl) <- url) {
-                let handshakeResult = transport.handshake(parsedUrl, service)
-                if (let Some(result) <- handshakeResult) {
-                    var showHandshake = handshakeInfo
-                    return Some(RemoteRefsResult(result.refs, result.protocolVersion, result.capabilities, showHandshake))
+                let transportOpt = createTransport(parsedUrl, u)
+                if (let Some(transport) <- transportOpt) {
+                    let service = Service.gitUploadPack()
+                    let handshakeResult = transport.handshake(parsedUrl, service)
+                    if (let Some(result) <- handshakeResult) {
+                        var showHandshake = handshakeInfo
+                        return Some(RemoteRefsResult(result.refs, result.protocolVersion, result.capabilities, showHandshake))
+                    }
+                } else {
+                    return refsViaGitCommand(u)
                 }
             }
         }
@@ -98,26 +103,42 @@ public class RemoteQuery {
     public func refMap(remoteName: String, showUnmapped: Bool): ?RefMapResult {
         let urlStr = resolveRemoteUrl(remoteName)
         if (let Some(u) <- urlStr) {
-            let transport = HttpTransport()
-            let service = Service.gitUploadPack()
             let url = Url.parse(u)
             if (let Some(parsedUrl) <- url) {
-                let handshakeResult = transport.handshake(parsedUrl, service)
-                if (let Some(result) <- handshakeResult) {
-                    // 获取 fetch refspec
-                    let refspecs = getFetchRefspecs(remoteName)
-                    // 构建映射
-                    var mappings = ArrayList<RefMapping>()
-                    var unmapped = ArrayList<Ref>()
-                    for (`ref` in result.refs) {
-                        let mapped = applyRefspecs(`ref`, refspecs, remoteName)
-                        if (let Some(m) <- mapped) {
-                            mappings.add(m)
-                        } else {
-                            unmapped.add(`ref`)
+                let transportOpt = createTransport(parsedUrl, u)
+                if (let Some(transport) <- transportOpt) {
+                    let service = Service.gitUploadPack()
+                    let handshakeResult = transport.handshake(parsedUrl, service)
+                    if (let Some(result) <- handshakeResult) {
+                        let refspecs = getFetchRefspecs(remoteName)
+                        var mappings = ArrayList<RefMapping>()
+                        var unmapped = ArrayList<Ref>()
+                        for (`ref` in result.refs) {
+                            let mapped = applyRefspecs(`ref`, refspecs, remoteName)
+                            if (let Some(m) <- mapped) {
+                                mappings.add(m)
+                            } else {
+                                unmapped.add(`ref`)
+                            }
                         }
+                        return Some(RefMapResult(mappings, unmapped, refspecs, showUnmapped))
                     }
-                    return Some(RefMapResult(mappings, unmapped, refspecs, showUnmapped))
+                } else {
+                    let refsResult = refsViaGitCommand(u)
+                    if (let Some(rr) <- refsResult) {
+                        let refspecs = getFetchRefspecs(remoteName)
+                        var mappings = ArrayList<RefMapping>()
+                        var unmapped = ArrayList<Ref>()
+                        for (`ref` in rr.refs) {
+                            let mapped = applyRefspecs(`ref`, refspecs, remoteName)
+                            if (let Some(m) <- mapped) {
+                                mappings.add(m)
+                            } else {
+                                unmapped.add(`ref`)
+                            }
+                        }
+                        return Some(RefMapResult(mappings, unmapped, refspecs, showUnmapped))
+                    }
                 }
             }
         }
@@ -127,12 +148,13 @@ public class RemoteQuery {
     // 解析远程仓库名称或 URL
     // 对齐原版：gitoxide-core/src/repository/remote.rs::by_name_or_url()
     func resolveRemoteUrl(nameOrUrl: String): ?String {
-        // 如果是 URL 格式直接返回
         if (nameOrUrl.startsWith("http://") || nameOrUrl.startsWith("https://") || nameOrUrl.startsWith("git://") ||
             nameOrUrl.startsWith("ssh://") || nameOrUrl.startsWith("file://")) {
             return Some(nameOrUrl)
         }
-        // 否则从配置中查找
+        if (nameOrUrl.contains(":") && nameOrUrl.contains("/")) {
+            return Some(nameOrUrl)
+        }
         let configOpt = repo.config
         if (let Some(cfg) <- configOpt) {
             let key = "remote." + nameOrUrl + ".url"
@@ -142,7 +164,78 @@ public class RemoteQuery {
         }
     }
 
-    // 获取 fetch refspec 列表
+    func createTransport(url: Url, urlStr: String): ?ClientTransport {
+        let authOpt = loadCredentialsForUrl(urlStr)
+        if (url.scheme == Scheme.Http) {
+            let t = HttpTransport()
+            if (let Some(auth) <- authOpt) {
+                t.authHeader = Some("Basic " + auth)
+            }
+            return Some(t)
+        }
+        if (url.scheme == Scheme.Https) {
+            let t = TlsHttpTransport()
+            if (let Some(auth) <- authOpt) {
+                t.authHeader = Some("Basic " + auth)
+            }
+            return Some(t)
+        }
+        if (url.scheme == Scheme.Git) {
+            return Some(HttpTransport())
+        }
+        None
+    }
+
+    func refsViaGitCommand(urlStr: String): ?RemoteRefsResult {
+        try {
+            let (exitCode, stdout, stderr) = executeWithOutput("git", ["ls-remote", "--symref", urlStr])
+            if (exitCode != 0) {
+                return None
+            }
+            var refs = ArrayList<Ref>()
+            var headSymrefTarget: ?String = None
+            var headOid: ?ObjectId = None
+            let content = String.fromUtf8(stdout)
+            let lines = content.split("\n")
+            for (line in lines) {
+                if (line.size == 0) {
+                    continue
+                }
+                let tabIdx = line.indexOf("\t")
+                if (tabIdx.isNone()) {
+                    continue
+                }
+                let ti = tabIdx.getOrThrow()
+                let first = line[0..ti]
+                let refName = line[ti + 1..]
+                if (refName == "HEAD" && first.startsWith("ref: ")) {
+                    headSymrefTarget = Some(first[5..])
+                } else {
+                    let oidOpt = ObjectId.fromHex(first)
+                    if (let Some(oid) <- oidOpt) {
+                        if (refName == "HEAD") {
+                            headOid = Some(oid)
+                        } else if (refName.startsWith("refs/")) {
+                            refs.add(Ref.Direct(refName, oid))
+                        }
+                    }
+                }
+            }
+            if (let Some(oid) <- headOid) {
+                let target = if (let Some(t) <- headSymrefTarget) {
+                    t
+                } else {
+                    "refs/heads/master"
+                }
+                let headList = ArrayList<Ref>()
+                headList.add(Ref.Symbolic("HEAD", target, Option<ObjectId>.None, oid))
+                refs.add(all: headList, at: 0)
+            }
+            Some(RemoteRefsResult(refs, ProtocolVersion.V2, ArrayList<String>(), false))
+        } catch (_: Exception) {
+            None
+        }
+    }
     // 对齐原版：gix::remote::refspecs()
     func getFetchRefspecs(remoteName: String): ArrayList<String> {
         var result = ArrayList<String>()

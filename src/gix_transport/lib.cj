@@ -147,6 +147,20 @@ public func refObjectId(r: Ref): ?ObjectId {
     }
 }
 
+func convertSymrefRef(r: Ref, symrefTargets: HashMap<String, String>): Ref {
+    let name = refName(r)
+    if (symrefTargets.contains(name)) {
+        let oidOpt = refObjectId(r)
+        if (let Some(oid) <- oidOpt) {
+            Ref.Symbolic(name, symrefTargets.get(name).getOrThrow(), Option<ObjectId>.None, oid)
+        } else {
+            r
+        }
+    } else {
+        r
+    }
+}
+
 // 抓取结果，对齐 Rust gix_protocol::fetch::Response
 public class FetchResult {
     // 收到的 pack 数据
@@ -710,6 +724,27 @@ public class HttpTransport <: ClientTransport {
             }
         }
 
+        var symrefTargets = HashMap<String, String>()
+        for (cap in capabilities) {
+            if (cap.startsWith("symref=")) {
+                let rest = cap[7..]
+                let colonIdx = rest.indexOf(":")
+                if (let Some(ci) <- colonIdx) {
+                    let refName = rest[0..ci]
+                    let target = rest[ci + 1..]
+                    symrefTargets.add(refName, target)
+                }
+            }
+        }
+        if (symrefTargets.size > 0) {
+            var newRefs = ArrayList<Ref>()
+            for (r in refs) {
+                let converted = convertSymrefRef(r, symrefTargets)
+                newRefs.add(converted)
+            }
+            refs = newRefs
+        }
+
         Some(HandshakeResult(refs, protocolVersion, capabilities))
     }
 
@@ -1213,6 +1248,27 @@ public class TlsHttpTransport <: ClientTransport {
             if (cap.startsWith("version=")) {
                 protocolVersion = ProtocolVersion.V2
             }
+        }
+
+        var symrefTargets = HashMap<String, String>()
+        for (cap in capabilities) {
+            if (cap.startsWith("symref=")) {
+                let rest = cap[7..]
+                let colonIdx = rest.indexOf(":")
+                if (let Some(ci) <- colonIdx) {
+                    let refName = rest[0..ci]
+                    let target = rest[ci + 1..]
+                    symrefTargets.add(refName, target)
+                }
+            }
+        }
+        if (symrefTargets.size > 0) {
+            var newRefs = ArrayList<Ref>()
+            for (r in refs) {
+                let converted = convertSymrefRef(r, symrefTargets)
+                newRefs.add(converted)
+            }
+            refs = newRefs
         }
 
         Some(HandshakeResult(refs, protocolVersion, capabilities))
