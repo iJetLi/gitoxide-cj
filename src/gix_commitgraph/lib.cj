@@ -10,12 +10,15 @@ import gitoxide.gix_hash.*
 import gitoxide.gix_chunk.*
 import std.collection.*
 import std.fs.*
+import std.io.*
 
 // 对齐 Rust: gix_commitgraph::file::commit::GENERATION_NUMBER_INFINITY
 public let GENERATION_NUMBER_INFINITY: UInt32 = 0xFFFFFFFF
 
 // 对齐 Rust: gix_commitgraph::file::commit::GENERATION_NUMBER_MAX
 public let GENERATION_NUMBER_MAX: UInt32 = 0x3FFFFFFF
+
+public let NO_PARENT: UInt32 = 0x70000000
 
 // 对齐 Rust: gix_commitgraph::Position
 public struct Position {
@@ -103,6 +106,7 @@ public class CommitGraphFile {
     public var oidLookupOffset: Int64
     public var commitDataOffset: Int64
     public var extraEdgesOffset: Int64
+    public var gda2Offset: Int64
     public var hashLen: Int64
     public var numCommits: Int64
     public var path: String
@@ -113,6 +117,7 @@ public class CommitGraphFile {
         this.oidLookupOffset = 0
         this.commitDataOffset = 0
         this.extraEdgesOffset = 0
+        this.gda2Offset = 0
         this.hashLen = 20
         this.numCommits = 0
         this.path = ""
@@ -124,6 +129,7 @@ public class CommitGraphFile {
         this.oidLookupOffset = 0
         this.commitDataOffset = 0
         this.extraEdgesOffset = 0
+        this.gda2Offset = 0
         this.hashLen = 20
         this.numCommits = 0
         this.path = path
@@ -134,8 +140,33 @@ public class CommitGraphFile {
         if (path.size == 0 || !exists(path)) {
             return None
         }
-        let file = CommitGraphFile(path)
-        Some(file)
+        try {
+            let f = File(path, OpenMode.Read)
+            var buf = ArrayList<Byte>()
+            let chunk = Array<UInt8>(4096, repeat: UInt8(0))
+            while (true) {
+                let n = f.read(chunk)
+                if (n <= 0) {
+                    break
+                }
+                var i: Int64 = 0
+                while (i < n) {
+                    buf.add(chunk[i])
+                    i += 1
+                }
+            }
+            f.close()
+            let data = buf.toArray()
+            let file = fromBytes(data)
+            if (let Some(f) <- file) {
+                f.path = path
+                Some(f)
+            } else {
+                None
+            }
+        } catch (_: Exception) {
+            None
+        }
     }
 
     // 对齐 Rust: file::File::init()
@@ -149,24 +180,25 @@ public class CommitGraphFile {
             return None
         }
         // 版本号
-        let version = (UInt32(data[4]) << 24) | (UInt32(data[5]) << 16) | (UInt32(data[6]) << 8) | UInt32(data[7])
+        let version = UInt32(data[4])
         if (version != 1 && version != 2) {
             return None
         }
-        // hash 版本
-        let hashVersion = (UInt32(data[8]) << 24) | (UInt32(data[9]) << 16) | (UInt32(data[10]) << 8) | UInt32(data[11])
+        let hashVersion = UInt32(data[5])
         let hashLen: Int64 = if (hashVersion == 2) {
             32
         } else {
             20
         }
 
+        let numChunks = UInt32(data[6]) | (UInt32(data[7]) << 8)
+        let tocOffset: Int64 = 8
+
         let file = CommitGraphFile()
         file.data = data
         file.hashLen = hashLen
 
-        // 使用 gix_chunk 解析 chunk table
-        let chunkFile = ChunkFile.parse(data)
+        let chunkFile = ChunkFile.parse(data, tocOffset, Int64(numChunks))
         if (chunkFile.isNone()) {
             return None
         }
@@ -185,7 +217,7 @@ public class CommitGraphFile {
         if (let Some(c) <- cdatChunk) {
             file.commitDataOffset = c.offset
             let commitDataSize = c.size
-            let entrySize = hashLen * 2 + 16
+            let entrySize = hashLen + 16
             if (entrySize > 0) {
                 file.numCommits = commitDataSize / entrySize
             }
@@ -196,6 +228,12 @@ public class CommitGraphFile {
         let edgeChunk = cf.findChunk(edgeKind)
         if (let Some(c) <- edgeChunk) {
             file.extraEdgesOffset = c.offset
+        }
+
+        let gda2Kind = makeChunkId(UInt8(71), UInt8(68), UInt8(65), UInt8(50))
+        let gda2Chunk = cf.findChunk(gda2Kind)
+        if (let Some(c) <- gda2Chunk) {
+            file.gda2Offset = c.offset
         }
 
         // 解析 fanout 表 ("OIDF")
@@ -286,7 +324,7 @@ public class CommitGraphFile {
             HashKind.Sha1
         }
         let objectId = ObjectId(oidBytes, hashKind)
-        let entrySize = hashLen * 2 + 16
+        let entrySize = hashLen + 16
         let commitOffset = commitDataOffset + idx * entrySize
         if (commitOffset + entrySize > data.size) {
             return None
@@ -297,20 +335,37 @@ public class CommitGraphFile {
         let parent2 = (UInt32(data[baseOffset + 4]) << 24) | (UInt32(data[baseOffset + 5]) << 16) | (UInt32(data[baseOffset +
                 6]) << 8) | UInt32(data[baseOffset + 7])
         var parentPositions = Array<Position>(0, repeat: Position(UInt32(0)))
-        if (parent1 != 0xFFFFFFFF) {
-            parentPositions = Array<Position>(1, repeat: Position(parent1))
-            if (parent2 != 0xFFFFFFFF) {
+        if (parent1 == NO_PARENT || parent1 == 0xFFFFFFFF) {
+            parentPositions = Array<Position>(0, repeat: Position(UInt32(0)))
+        } else {
+            let p1Pos = parent1 & UInt32(0x3FFFFFFF)
+            if (parent2 == NO_PARENT || parent2 == 0xFFFFFFFF) {
+                parentPositions = Array<Position>(1, repeat: Position(p1Pos))
+            } else if ((parent2 & UInt32(0x80000000)) != 0) {
+                parentPositions = Array<Position>(1, repeat: Position(p1Pos))
+            } else {
+                let p2Pos = parent2 & UInt32(0x3FFFFFFF)
                 parentPositions = Array<Position>(2, repeat: Position(UInt32(0)))
-                parentPositions[0] = Position(parent1)
-                parentPositions[1] = Position(parent2)
+                parentPositions[0] = Position(p1Pos)
+                parentPositions[1] = Position(p2Pos)
             }
         }
         let genAndTime = (UInt32(data[baseOffset + 8]) << 24) | (UInt32(data[baseOffset + 9]) << 16) | (UInt32(data[baseOffset +
                 10]) << 8) | UInt32(data[baseOffset + 11])
-        let generation = genAndTime >> 2
+        var generation = genAndTime >> 2
+        if (gda2Offset > 0) {
+            let gda2EntryOffset = gda2Offset + idx * 4
+            if (gda2EntryOffset + 4 <= data.size) {
+                let correctedGen = (UInt32(data[gda2EntryOffset]) << 24) | (UInt32(data[gda2EntryOffset + 1]) << 16) | (UInt32(data[gda2EntryOffset +
+                        2]) << 8) | UInt32(data[gda2EntryOffset + 3])
+                if (correctedGen != 0) {
+                    generation = correctedGen
+                }
+            }
+        }
         let commitTime = (Int64(data[baseOffset + 12]) << 24) | (Int64(data[baseOffset + 13]) << 16) | (Int64(data[baseOffset +
                 14]) << 8) | Int64(data[baseOffset + 15])
-        let treeOffset = baseOffset + 16
+        let treeOffset = commitOffset
         var treeBytes = Array<Byte>(hashLen, repeat: UInt8(0))
         var t: Int64 = 0
         while (t < hashLen) {
