@@ -53,16 +53,23 @@ public class Prefix {
     // 参数 other：待匹配的完整对象标识符
     // 返回值：前缀匹配时返回 true
     public func matches(other: ObjectId): Bool {
-        let byteLen = (hexLen + 1) / 2
-        if (byteLen > other.bytes.size) {
-            return false
-        }
+        let fullBytes = hexLen / 2
         var i: Int64 = 0
-        while (i < byteLen) {
+        while (i < fullBytes) {
             if (id.bytes[i] != other.bytes[i]) {
                 return false
             }
             i += 1
+        }
+        if (hexLen % 2 != 0) {
+            let halfByteIdx = fullBytes
+            if (halfByteIdx >= other.bytes.size) {
+                return false
+            }
+            let mask: UInt8 = 0xF0
+            if ((id.bytes[halfByteIdx] & mask) != (other.bytes[halfByteIdx] & mask)) {
+                return false
+            }
         }
         true
     }
