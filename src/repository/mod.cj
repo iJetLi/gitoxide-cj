@@ -141,6 +141,10 @@ public class Repository {
         odb.tryFind(id)
     }
 
+    public func lookupPrefix(prefix: Prefix): ?PrefixLookupOutcome {
+        odb.lookupPrefix(prefix)
+    }
+
     // 写入对象到对象数据库
     // 参数 kind：对象类型（commit/tree/blob/tag）
     // 参数 data：对象原始字节数据

@@ -32,6 +32,22 @@ public class Prefix {
         Some(Prefix(id, hexLen))
     }
 
+    public static func fromHex(hex: String): ?Prefix {
+        if (hex.size < 4) {
+            return None
+        }
+        var fullHex = hex
+        while (fullHex.size < 40) {
+            fullHex = fullHex + "0"
+        }
+        let idOpt = ObjectId.fromHex(fullHex)
+        if (let Some(id) <- idOpt) {
+            Some(Prefix(id, hex.size))
+        } else {
+            None
+        }
+    }
+
     // 判断此前缀是否匹配给定的完整 ObjectId
     // 比较前 hexLen 个十六进制字符对应的字节
     // 参数 other：待匹配的完整对象标识符
