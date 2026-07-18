@@ -10,6 +10,7 @@ package gitoxide.gix_revision
 import gitoxide.gix_hash.*
 import gitoxide.gix_utils.*
 import gitoxide.gix_revwalk.*
+import gitoxide.gix_odb.store.*
 import std.collection.*
 import std.convert.*
 
@@ -62,6 +63,20 @@ public func resolve(spec: Spec, resolver: ResolveRef): ?ObjectId {
     // 完整哈希
     if (s.size == 40 || s.size == 64) {
         return Some(ObjectId.fromHexOrThrow(s))
+    }
+
+    // 短哈希（4-39个十六进制字符）
+    if (s.size >= 4 && isHexString(s)) {
+        let prefixOpt = Prefix.fromHex(s)
+        if (let Some(prefix) <- prefixOpt) {
+            let lookupOpt = resolver.resolvePrefix(prefix)
+            if (let Some(outcome) <- lookupOpt) {
+                match (outcome) {
+                    case PrefixLookupOutcome.Unique(id) => return Some(id)
+                    case PrefixLookupOutcome.Ambiguous => return None
+                }
+            }
+        }
     }
 
     // ~N 语法（祖先）
@@ -171,6 +186,7 @@ public interface ResolveRef {
     func resolveUpstream(refName: String): ?ObjectId
     func resolvePush(refName: String): ?ObjectId
     func resolveNthPrior(refName: String, n: Int64): ?ObjectId
+    func resolvePrefix(prefix: Prefix): ?PrefixLookupOutcome
 }
 
 // ============================================================
@@ -680,4 +696,16 @@ class DescribeQueueEntry {
 public interface DescribeNameFinder {
     func findName(id: ObjectId): ?String
     func getParents(id: ObjectId): ?Array<ObjectId>
+}
+
+func isHexString(s: String): Bool {
+    var i: Int64 = 0
+    while (i < s.size) {
+        let c = s[i]
+        if (!((c >= UInt8(48) && c <= UInt8(57)) || (c >= UInt8(97) && c <= UInt8(102)) || (c >= UInt8(65) && c <= UInt8(70)))) {
+            return false
+        }
+        i += 1
+    }
+    true
 }

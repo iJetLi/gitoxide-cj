@@ -10,6 +10,7 @@ import gitoxide.gix_hash.*
 import gitoxide.gix_revision.*
 import gitoxide.gix_object.*
 import gitoxide.gix_ref.*
+import gitoxide.gix_odb.store.*
 
 // 修订规格查询器，将字符串形式的修订规格解析为对象 ID
 public class RevisionQuery {
@@ -153,5 +154,9 @@ class RepoResolver <: ResolveRef {
 
     public func resolveNthPrior(refName: String, n: Int64): ?ObjectId {
         None
+    }
+
+    public func resolvePrefix(prefix: Prefix): ?PrefixLookupOutcome {
+        repo.lookupPrefix(prefix)
     }
 }
