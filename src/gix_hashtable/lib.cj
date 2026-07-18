@@ -114,7 +114,7 @@ public class HashMap<K, V> where K <: Hashable & Equatable<K> {
 
     // 遍历所有键值对，对每个值执行操作
     // 参数 action：对每个值执行的操作
-    public func forEachValue(action: (V)->Unit): Unit {
+    public func forEachValue(action: (V) -> Unit): Unit {
         var bucketIdx: Int64 = 0
         while (bucketIdx < buckets.size) {
             let bucket = buckets[bucketIdx]

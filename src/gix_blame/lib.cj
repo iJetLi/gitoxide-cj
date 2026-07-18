@@ -184,10 +184,8 @@ public enum BlameOffset {
 // 偏移量对范围的移位
 public func offsetShiftedRange(offset: BlameOffset, range: Range<Int64>): Range<Int64> {
     match (offset) {
-        case BlameOffset.Added(added) =>
-            (range.start - added)..(range.end - added)
-        case BlameOffset.Deleted(deleted) =>
-            (range.start + deleted)..(range.end + deleted)
+        case BlameOffset.Added(added) => (range.start - added)..(range.end - added)
+        case BlameOffset.Deleted(deleted) => (range.start + deleted)..(range.end + deleted)
     }
 }
 

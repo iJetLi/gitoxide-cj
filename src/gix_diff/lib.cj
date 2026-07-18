@@ -45,8 +45,14 @@ public enum Action <: Equatable<Action> {
 
     public operator func ==(other: Action): Bool {
         match (this) {
-            case Continue => match (other) { case Continue => true case _ => false }
-            case Break => match (other) { case Break => true case _ => false }
+            case Continue => match (other) {
+                case Continue => true
+                case _ => false
+            }
+            case Break => match (other) {
+                case Break => true
+                case _ => false
+            }
         }
     }
 }
@@ -316,12 +322,13 @@ public class Recorder {
 
     public func visitChange(change: Change): Action {
         match (change) {
-            case Change.Deletion(d) =>
-                records.add(RecorderChange.Deletion(RecorderDeletion(d.entryMode, d.oid, pathClone(), d.relation)))
-            case Change.Addition(a) =>
-                records.add(RecorderChange.Addition(RecorderAddition(a.entryMode, a.oid, pathClone(), a.relation)))
-            case Change.Modification(m) =>
-                records.add(RecorderChange.Modification(RecorderModification(m.previousEntryMode, m.previousOid, m.entryMode, m.oid, pathClone())))
+            case Change.Deletion(d) => records.add(
+                RecorderChange.Deletion(RecorderDeletion(d.entryMode, d.oid, pathClone(), d.relation)))
+            case Change.Addition(a) => records.add(
+                RecorderChange.Addition(RecorderAddition(a.entryMode, a.oid, pathClone(), a.relation)))
+            case Change.Modification(m) => records.add(
+                RecorderChange.Modification(
+                    RecorderModification(m.previousEntryMode, m.previousOid, m.entryMode, m.oid, pathClone())))
         }
         Action.Continue
     }
@@ -336,7 +343,11 @@ public func compareEntries(a: Entry, b: Entry): Ordering {
     if (aName == bName) {
         return Ordering.EQ
     }
-    let common = if (aName.size < bName.size) { aName.size } else { bName.size }
+    let common = if (aName.size < bName.size) {
+        aName.size
+    } else {
+        bName.size
+    }
     var i: Int64 = 0
     while (i < common) {
         let ac = UInt8(aName[i])
@@ -365,7 +376,13 @@ public func compareEntries(a: Entry, b: Entry): Ordering {
     }
     if (let Some(av) <- aSuffix) {
         if (let Some(bv) <- bSuffix) {
-            if (av < bv) { Ordering.LT } else if (av > bv) { Ordering.GT } else { Ordering.EQ }
+            if (av < bv) {
+                Ordering.LT
+            } else if (av > bv) {
+                Ordering.GT
+            } else {
+                Ordering.EQ
+            }
         } else {
             Ordering.GT
         }

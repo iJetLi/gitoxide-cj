@@ -42,7 +42,8 @@ public class Commit {
     public var committerTimestamp: Int64
     public var rootTreeId: ObjectId
 
-    public init(objectId: ObjectId, parentPositions: Array<Position>, generation: Generation, committerTimestamp: Int64, rootTreeId: ObjectId) {
+    public init(objectId: ObjectId, parentPositions: Array<Position>, generation: Generation, committerTimestamp: Int64,
+        rootTreeId: ObjectId) {
         this.objectId = objectId
         this.parentPositions = parentPositions
         this.generation = generation
@@ -55,7 +56,11 @@ public class Commit {
     }
 
     public func generationOpt(): ?Generation {
-        if (generation == GENERATION_NUMBER_INFINITY) { None } else { Some(generation) }
+        if (generation == GENERATION_NUMBER_INFINITY) {
+            None
+        } else {
+            Some(generation)
+        }
     }
 }
 
@@ -136,17 +141,25 @@ public class CommitGraphFile {
     // 对齐 Rust: file::File::init()
     // 从字节数据解析 commit-graph 文件
     public static func fromBytes(data: Array<Byte>): ?CommitGraphFile {
-        if (data.size < 12) { return None }
+        if (data.size < 12) {
+            return None
+        }
         // 检查签名 "CGPH"
         if (data[0] != UInt8(67) || data[1] != UInt8(71) || data[2] != UInt8(80) || data[3] != UInt8(72)) {
             return None
         }
         // 版本号
         let version = (UInt32(data[4]) << 24) | (UInt32(data[5]) << 16) | (UInt32(data[6]) << 8) | UInt32(data[7])
-        if (version != 1 && version != 2) { return None }
+        if (version != 1 && version != 2) {
+            return None
+        }
         // hash 版本
         let hashVersion = (UInt32(data[8]) << 24) | (UInt32(data[9]) << 16) | (UInt32(data[10]) << 8) | UInt32(data[11])
-        let hashLen: Int64 = if (hashVersion == 2) { 32 } else { 20 }
+        let hashLen: Int64 = if (hashVersion == 2) {
+            32
+        } else {
+            20
+        }
 
         let file = CommitGraphFile()
         file.data = data
@@ -154,7 +167,9 @@ public class CommitGraphFile {
 
         // 使用 gix_chunk 解析 chunk table
         let chunkFile = ChunkFile.parse(data)
-        if (chunkFile.isNone()) { return None }
+        if (chunkFile.isNone()) {
+            return None
+        }
         let cf = chunkFile.getOrThrow()
 
         // 查找 OID Lookup chunk ("OIDL")
@@ -191,7 +206,8 @@ public class CommitGraphFile {
             while (i < 256) {
                 let offset = c.offset + i * 4
                 if (offset + 4 <= data.size) {
-                    file.fan[i] = (UInt32(data[offset]) << 24) | (UInt32(data[offset + 1]) << 16) | (UInt32(data[offset + 2]) << 8) | UInt32(data[offset + 3])
+                    file.fan[i] = (UInt32(data[offset]) << 24) | (UInt32(data[offset + 1]) << 16) | (UInt32(data[offset +
+                            2]) << 8) | UInt32(data[offset + 3])
                 }
                 i += 1
             }
@@ -203,21 +219,35 @@ public class CommitGraphFile {
 
     // 对齐 Rust: file::File::lookup()
     public func lookup(id: ObjectId): ?Position {
-        if (data.size == 0 || numCommits == 0) { return None }
+        if (data.size == 0 || numCommits == 0) {
+            return None
+        }
         let firstByte = id.bytes[0]
-        var lo: Int64 = if (firstByte == 0) { 0 } else { Int64(fan[Int64(firstByte) - 1]) }
+        var lo: Int64 = if (firstByte == 0) {
+            0
+        } else {
+            Int64(fan[Int64(firstByte) - 1])
+        }
         var hi: Int64 = Int64(fan[Int64(firstByte)])
         while (lo < hi) {
             let mid = lo + (hi - lo) / 2
             let oidOffset = oidLookupOffset + mid * hashLen
-            if (oidOffset + hashLen > data.size) { break }
+            if (oidOffset + hashLen > data.size) {
+                break
+            }
             var cmp: Int64 = 0
             var k: Int64 = 0
             while (k < hashLen) {
                 let a = data[oidOffset + k]
                 let b = id.bytes[k]
-                if (a < b) { cmp = -1; break }
-                if (a > b) { cmp = 1; break }
+                if (a < b) {
+                    cmp = -1
+                    break
+                }
+                if (a > b) {
+                    cmp = 1
+                    break
+                }
                 k += 1
             }
             if (cmp == 0) {
@@ -233,25 +263,39 @@ public class CommitGraphFile {
 
     // 对齐 Rust: file::File::commit_at()
     public func commitAt(pos: Position): ?Commit {
-        if (data.size == 0) { return None }
+        if (data.size == 0) {
+            return None
+        }
         let idx = Int64(pos.index)
-        if (idx >= numCommits) { return None }
+        if (idx >= numCommits) {
+            return None
+        }
         let oidOffset = oidLookupOffset + idx * hashLen
-        if (oidOffset + hashLen > data.size) { return None }
+        if (oidOffset + hashLen > data.size) {
+            return None
+        }
         var oidBytes = Array<Byte>(hashLen, repeat: UInt8(0))
         var k: Int64 = 0
         while (k < hashLen) {
             oidBytes[k] = data[oidOffset + k]
             k += 1
         }
-        let hashKind = if (hashLen == 32) { HashKind.Sha256 } else { HashKind.Sha1 }
+        let hashKind = if (hashLen == 32) {
+            HashKind.Sha256
+        } else {
+            HashKind.Sha1
+        }
         let objectId = ObjectId(oidBytes, hashKind)
         let entrySize = hashLen * 2 + 16
         let commitOffset = commitDataOffset + idx * entrySize
-        if (commitOffset + entrySize > data.size) { return None }
+        if (commitOffset + entrySize > data.size) {
+            return None
+        }
         let baseOffset = commitOffset + hashLen
-        let parent1 = (UInt32(data[baseOffset]) << 24) | (UInt32(data[baseOffset + 1]) << 16) | (UInt32(data[baseOffset + 2]) << 8) | UInt32(data[baseOffset + 3])
-        let parent2 = (UInt32(data[baseOffset + 4]) << 24) | (UInt32(data[baseOffset + 5]) << 16) | (UInt32(data[baseOffset + 6]) << 8) | UInt32(data[baseOffset + 7])
+        let parent1 = (UInt32(data[baseOffset]) << 24) | (UInt32(data[baseOffset + 1]) << 16) | (UInt32(data[baseOffset +
+                2]) << 8) | UInt32(data[baseOffset + 3])
+        let parent2 = (UInt32(data[baseOffset + 4]) << 24) | (UInt32(data[baseOffset + 5]) << 16) | (UInt32(data[baseOffset +
+                6]) << 8) | UInt32(data[baseOffset + 7])
         var parentPositions = Array<Position>(0, repeat: Position(UInt32(0)))
         if (parent1 != 0xFFFFFFFF) {
             parentPositions = Array<Position>(1, repeat: Position(parent1))
@@ -261,9 +305,11 @@ public class CommitGraphFile {
                 parentPositions[1] = Position(parent2)
             }
         }
-        let genAndTime = (UInt32(data[baseOffset + 8]) << 24) | (UInt32(data[baseOffset + 9]) << 16) | (UInt32(data[baseOffset + 10]) << 8) | UInt32(data[baseOffset + 11])
+        let genAndTime = (UInt32(data[baseOffset + 8]) << 24) | (UInt32(data[baseOffset + 9]) << 16) | (UInt32(data[baseOffset +
+                10]) << 8) | UInt32(data[baseOffset + 11])
         let generation = genAndTime >> 2
-        let commitTime = (Int64(data[baseOffset + 12]) << 24) | (Int64(data[baseOffset + 13]) << 16) | (Int64(data[baseOffset + 14]) << 8) | Int64(data[baseOffset + 15])
+        let commitTime = (Int64(data[baseOffset + 12]) << 24) | (Int64(data[baseOffset + 13]) << 16) | (Int64(data[baseOffset +
+                14]) << 8) | Int64(data[baseOffset + 15])
         let treeOffset = baseOffset + 16
         var treeBytes = Array<Byte>(hashLen, repeat: UInt8(0))
         var t: Int64 = 0
@@ -291,8 +337,12 @@ public class CommitGraphFile {
 
     // 对齐 Rust: file::File::verify()
     public func verify(): Bool {
-        if (data.size == 0) { return false }
-        if (data.size < 12) { return false }
+        if (data.size == 0) {
+            return false
+        }
+        if (data.size < 12) {
+            return false
+        }
         if (data[0] != UInt8(67) || data[1] != UInt8(71) || data[2] != UInt8(80) || data[3] != UInt8(72)) {
             return false
         }

@@ -203,7 +203,6 @@ func testBlameEntryLargeLineRange(): Unit {
     }
 }
 
-
 // ============================================================
 // BlameResult 条目操作补充测试
 // ============================================================
@@ -219,7 +218,6 @@ func testBlameResultEntriesCleared(): Unit {
         throw Exception("entries should be empty after clear")
     }
 }
-
 
 // ============================================================
 // BlameOutcome 测试 - 对齐 gix-blame/src/types.rs Outcome

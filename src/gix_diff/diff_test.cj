@@ -380,7 +380,10 @@ func testChangeAccessors(): Unit {
         let rel = changeRelation(deletion)
         if (let Some(r) <- rel) {
             match (r) {
-                case Relation.Parent(id) => if (id != 1) { throw Exception("Deletion relation id should be 1") }
+                case Relation.Parent(id) =>
+                    if (id != 1) {
+                        throw Exception("Deletion relation id should be 1")
+                    }
                 case _ => throw Exception("Deletion relation should be Parent")
             }
         }

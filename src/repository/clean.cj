@@ -38,14 +38,19 @@ public class CleanQuery {
         removed
     }
 
-    func removeUntrackedRecursive(dir: String, prefix: String, indexPaths: HashSet<String>, dryRun: Bool, removed: ArrayList<String>): Unit {
+    func removeUntrackedRecursive(dir: String, prefix: String, indexPaths: HashSet<String>, dryRun: Bool,
+        removed: ArrayList<String>): Unit {
         try {
             let names = listDirectory(dir)
             for (name in names) {
                 if (name == "." || name == ".." || name == ".git") {
                     continue
                 }
-                let relPath = if (prefix.size > 0) { prefix + "/" + name } else { name }
+                let relPath = if (prefix.size > 0) {
+                    prefix + "/" + name
+                } else {
+                    name
+                }
                 let absPath = dir + "/" + name
                 if (isDir(absPath)) {
                     removeUntrackedRecursive(absPath, relPath, indexPaths, dryRun, removed)
@@ -53,7 +58,9 @@ public class CleanQuery {
                     if (!indexPaths.contains(relPath)) {
                         removed.add(relPath)
                         if (!dryRun) {
-                            try { remove(absPath) } catch (_: Exception) {}
+                            try {
+                                remove(absPath)
+                            } catch (_: Exception) {}
                         }
                     }
                 }

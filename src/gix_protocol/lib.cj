@@ -368,9 +368,9 @@ public class FetchArguments {
 
 // 协商动作类型，对齐 Rust gix_protocol::fetch::negotiate::Action
 public enum NegotiateAction {
-    | NoChange       // 无变化，无需抓取
+    | NoChange // 无变化，无需抓取
     | SkipToRefUpdate // 跳过协商，直接更新引用
-    | MustNegotiate   // 需要协商
+    | MustNegotiate // 需要协商
 }
 
 // 执行一轮协商，对齐 Rust gix_protocol::fetch::negotiate::one_round
@@ -388,6 +388,7 @@ func parseAcknowledgementCommon(ack: Acknowledgement): ?ObjectId {
         case _ => None
     }
 }
+
 public func oneRound(
     negotiator: Negotiator,
     graph: Graph,
@@ -478,18 +479,18 @@ public class Mapping {
 
 // 浅克隆类型，对齐 Rust gix_protocol::fetch::Shallow
 public enum Shallow {
-    | NoChange                               // 无变化
-    | DepthAtRemote(Int64)                   // 深度
-    | Deepen(Int64)                          // 扩展深度
-    | Since(Int64)                           // 时间截止
-    | Exclude(ArrayList<String>, ?Int64)     // 排除引用
+    | NoChange // 无变化
+    | DepthAtRemote(Int64) // 深度
+    | Deepen(Int64) // 扩展深度
+    | Since(Int64) // 时间截止
+    | Exclude(ArrayList<String>, ?Int64) // 排除引用
 }
 
 // 标签处理方式，对齐 Rust gix_protocol::fetch::Tags
 public enum Tags {
-    | All       // 抓取所有标签
-    | Included  // 仅抓取被引用的标签
-    | None      // 不抓取标签
+    | All // 抓取所有标签
+    | Included // 仅抓取被引用的标签
+    | None // 不抓取标签
 }
 
 // 握手结果，对齐 Rust gix_protocol::handshake::hero::Handshake
@@ -503,7 +504,8 @@ public class Handshake {
     // 服务器能力
     public var capabilities: Capabilities
 
-    public init(serverProtocolVersion: ProtocolVersion, refs: ?ArrayList<Ref>, v1ShallowUpdates: ?ArrayList<ShallowUpdate>, capabilities: Capabilities) {
+    public init(serverProtocolVersion: ProtocolVersion, refs: ?ArrayList<Ref>,
+        v1ShallowUpdates: ?ArrayList<ShallowUpdate>, capabilities: Capabilities) {
         this.serverProtocolVersion = serverProtocolVersion
         this.refs = refs
         this.v1ShallowUpdates = v1ShallowUpdates

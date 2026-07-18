@@ -148,7 +148,6 @@ func testStreamEntryConstruction(): Unit {
     }
 }
 
-
 // ============================================================
 // StreamEntryKind 测试 - 对齐 gix-worktree-stream/src/entry.rs
 // ============================================================

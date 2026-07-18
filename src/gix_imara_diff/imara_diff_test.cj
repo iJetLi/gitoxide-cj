@@ -83,28 +83,44 @@ func testDiffIsAdded(): Unit {
 func testHunkConstruct(): Unit {
     // 对齐 Rust: Hunk { old_start, old_len, new_start, new_len }
     let h = Hunk(1, 5, 1, 7)
-    if (h.oldStart != 1) { throw Exception("oldStart should be 1") }
-    if (h.oldLen != 5) { throw Exception("oldLen should be 5") }
-    if (h.newStart != 1) { throw Exception("newStart should be 1") }
-    if (h.newLen != 7) { throw Exception("newLen should be 7") }
+    if (h.oldStart != 1) {
+        throw Exception("oldStart should be 1")
+    }
+    if (h.oldLen != 5) {
+        throw Exception("oldLen should be 5")
+    }
+    if (h.newStart != 1) {
+        throw Exception("newStart should be 1")
+    }
+    if (h.newLen != 7) {
+        throw Exception("newLen should be 7")
+    }
 }
 
 @Test
 func testHunkIsPureInsertion(): Unit {
     // 对齐 Rust: Hunk::is_pure_insertion()
     let h = Hunk(1, 0, 1, 3)
-    if (!h.isPureInsertion()) { throw Exception("should be pure insertion") }
+    if (!h.isPureInsertion()) {
+        throw Exception("should be pure insertion")
+    }
     let h2 = Hunk(1, 2, 1, 3)
-    if (h2.isPureInsertion()) { throw Exception("should not be pure insertion") }
+    if (h2.isPureInsertion()) {
+        throw Exception("should not be pure insertion")
+    }
 }
 
 @Test
 func testHunkIsPureRemoval(): Unit {
     // 对齐 Rust: Hunk::is_pure_removal()
     let h = Hunk(1, 3, 1, 0)
-    if (!h.isPureRemoval()) { throw Exception("should be pure removal") }
+    if (!h.isPureRemoval()) {
+        throw Exception("should be pure removal")
+    }
     let h2 = Hunk(1, 3, 1, 2)
-    if (h2.isPureRemoval()) { throw Exception("should not be pure removal") }
+    if (h2.isPureRemoval()) {
+        throw Exception("should not be pure removal")
+    }
 }
 
 // ============================================================
@@ -118,9 +134,15 @@ func testInternerIntern(): Unit {
     let t1 = interner.intern("hello")
     let t2 = interner.intern("world")
     let t3 = interner.intern("hello")
-    if (t1 != t3) { throw Exception("same string should get same token") }
-    if (t1 == t2) { throw Exception("different strings should get different tokens") }
-    if (interner.numTokens() != 2) { throw Exception("should have 2 distinct tokens") }
+    if (t1 != t3) {
+        throw Exception("same string should get same token")
+    }
+    if (t1 == t2) {
+        throw Exception("different strings should get different tokens")
+    }
+    if (interner.numTokens() != 2) {
+        throw Exception("should have 2 distinct tokens")
+    }
 }
 
 @Test
@@ -129,8 +151,12 @@ func testInternerGet(): Unit {
     let interner = Interner()
     let t = interner.intern("test")
     let s = interner.get(t)
-    if (s.isNone()) { throw Exception("should find token") }
-    if (s.getOrThrow() != "test") { throw Exception("token should map back to 'test'") }
+    if (s.isNone()) {
+        throw Exception("should find token")
+    }
+    if (s.getOrThrow() != "test") {
+        throw Exception("token should map back to 'test'")
+    }
 }
 
 @Test
@@ -140,7 +166,9 @@ func testInternerClear(): Unit {
     interner.intern("a")
     interner.intern("b")
     interner.clear()
-    if (interner.numTokens() != 0) { throw Exception("should have 0 tokens after clear") }
+    if (interner.numTokens() != 0) {
+        throw Exception("should have 0 tokens after clear")
+    }
 }
 
 // ============================================================
@@ -151,9 +179,15 @@ func testInternerClear(): Unit {
 func testInternedInputNew(): Unit {
     // 对齐 Rust: InternedInput::new()
     let input = InternedInput.new("abc\ndef\n", "abc\ndefg\n")
-    if (input.before.size != 2) { throw Exception("before should have 2 lines") }
-    if (input.after.size != 2) { throw Exception("after should have 2 lines") }
-    if (input.interner.numTokens() != 3) { throw Exception("should have 3 distinct tokens") }
+    if (input.before.size != 2) {
+        throw Exception("before should have 2 lines")
+    }
+    if (input.after.size != 2) {
+        throw Exception("after should have 2 lines")
+    }
+    if (input.interner.numTokens() != 3) {
+        throw Exception("should have 3 distinct tokens")
+    }
 }
 
 @Test
@@ -161,8 +195,12 @@ func testInternedInputClear(): Unit {
     // 对齐 Rust: InternedInput::clear()
     let input = InternedInput.new("abc", "def")
     input.clear()
-    if (input.before.size != 0) { throw Exception("before should be empty after clear") }
-    if (input.after.size != 0) { throw Exception("after should be empty after clear") }
+    if (input.before.size != 0) {
+        throw Exception("before should be empty after clear")
+    }
+    if (input.after.size != 0) {
+        throw Exception("after should be empty after clear")
+    }
 }
 
 // ============================================================
@@ -174,8 +212,12 @@ func testDiffIdentical(): Unit {
     // 对齐 Rust: diff identical files
     let input = InternedInput.new("abcdef", "abcdef")
     let diff = Diff.compute(Algorithm.Myers, input)
-    if (diff.countAdditions() != 0) { throw Exception("identical should have 0 additions") }
-    if (diff.countRemovals() != 0) { throw Exception("identical should have 0 removals") }
+    if (diff.countAdditions() != 0) {
+        throw Exception("identical should have 0 additions")
+    }
+    if (diff.countRemovals() != 0) {
+        throw Exception("identical should have 0 removals")
+    }
 }
 
 @Test
@@ -183,8 +225,12 @@ func testDiffAdditions(): Unit {
     // 对齐 Rust: diff with pure additions
     let input = InternedInput.new("abc\n", "abc\ndef\n")
     let diff = Diff.compute(Algorithm.Myers, input)
-    if (diff.countRemovals() != 0) { throw Exception("should have 0 removals") }
-    if (diff.countAdditions() == 0) { throw Exception("should have additions") }
+    if (diff.countRemovals() != 0) {
+        throw Exception("should have 0 removals")
+    }
+    if (diff.countAdditions() == 0) {
+        throw Exception("should have additions")
+    }
 }
 
 @Test
@@ -192,8 +238,12 @@ func testDiffDeletions(): Unit {
     // 对齐 Rust: diff with pure deletions
     let input = InternedInput.new("abc\ndef\n", "abc\n")
     let diff = Diff.compute(Algorithm.Myers, input)
-    if (diff.countAdditions() != 0) { throw Exception("should have 0 additions") }
-    if (diff.countRemovals() == 0) { throw Exception("should have removals") }
+    if (diff.countAdditions() != 0) {
+        throw Exception("should have 0 additions")
+    }
+    if (diff.countRemovals() == 0) {
+        throw Exception("should have removals")
+    }
 }
 
 @Test
@@ -211,8 +261,12 @@ func testDiffEmptyOld(): Unit {
     // 对齐 Rust: diff with empty old file
     let input = InternedInput.new("", "abc\ndef\n")
     let diff = Diff.compute(Algorithm.Myers, input)
-    if (diff.countRemovals() != 0) { throw Exception("should have 0 removals") }
-    if (diff.countAdditions() != 2) { throw Exception("should have 2 additions, got " + diff.countAdditions().toString()) }
+    if (diff.countRemovals() != 0) {
+        throw Exception("should have 0 removals")
+    }
+    if (diff.countAdditions() != 2) {
+        throw Exception("should have 2 additions, got " + diff.countAdditions().toString())
+    }
 }
 
 @Test
@@ -220,8 +274,12 @@ func testDiffEmptyNew(): Unit {
     // 对齐 Rust: diff with empty new file
     let input = InternedInput.new("abc\ndef\n", "")
     let diff = Diff.compute(Algorithm.Myers, input)
-    if (diff.countAdditions() != 0) { throw Exception("should have 0 additions") }
-    if (diff.countRemovals() != 2) { throw Exception("should have 2 removals, got " + diff.countRemovals().toString()) }
+    if (diff.countAdditions() != 0) {
+        throw Exception("should have 0 additions")
+    }
+    if (diff.countRemovals() != 2) {
+        throw Exception("should have 2 removals, got " + diff.countRemovals().toString())
+    }
 }
 
 @Test
@@ -229,8 +287,12 @@ func testDiffBothEmpty(): Unit {
     // 对齐 Rust: diff both empty
     let input = InternedInput.new("", "")
     let diff = Diff.compute(Algorithm.Myers, input)
-    if (diff.countAdditions() != 0) { throw Exception("should have 0 additions") }
-    if (diff.countRemovals() != 0) { throw Exception("should have 0 removals") }
+    if (diff.countAdditions() != 0) {
+        throw Exception("should have 0 additions")
+    }
+    if (diff.countRemovals() != 0) {
+        throw Exception("should have 0 removals")
+    }
 }
 
 @Test
@@ -251,14 +313,18 @@ func testDiffMixed(): Unit {
 func testDiffLinesWithMyers(): Unit {
     // 对齐 Rust: Diff::compute(Algorithm::Myers, &input)
     let diff = diffLinesWith(Algorithm.Myers, "abc\ndef\n", "abc\ndefg\n")
-    if (diff.hunks.size == 0) { throw Exception("should have hunks") }
+    if (diff.hunks.size == 0) {
+        throw Exception("should have hunks")
+    }
 }
 
 @Test
 func testDiffLinesWithIdentical(): Unit {
     // 对齐 Rust: Diff::compute() 对相同内容
     let diff = diffLinesWith(Algorithm.Myers, "abc\ndef\n", "abc\ndef\n")
-    if (diff.hunks.size != 0) { throw Exception("identical content should have no hunks") }
+    if (diff.hunks.size != 0) {
+        throw Exception("identical content should have no hunks")
+    }
 }
 
 // ============================================================
@@ -274,7 +340,9 @@ func testDiffLinesOldApi(): Unit {
     newLines.add("abc")
     newLines.add("defg")
     let diff = diffLines(oldLines, newLines)
-    if (diff.hunks.size == 0) { throw Exception("should have hunks") }
+    if (diff.hunks.size == 0) {
+        throw Exception("should have hunks")
+    }
 }
 
 // ============================================================
@@ -286,8 +354,12 @@ func testTokenEquality(): Unit {
     let t1 = Token(1)
     let t2 = Token(1)
     let t3 = Token(2)
-    if (t1 != t2) { throw Exception("same value tokens should be equal") }
-    if (t1 == t3) { throw Exception("different value tokens should not be equal") }
+    if (t1 != t2) {
+        throw Exception("same value tokens should be equal")
+    }
+    if (t1 == t3) {
+        throw Exception("different value tokens should not be equal")
+    }
 }
 
 // ============================================================
@@ -312,7 +384,9 @@ func testDiffHunksFromCompute(): Unit {
     let input = InternedInput.new("abc", "axc")
     let diff = Diff.compute(Algorithm.Myers, input)
     let hunks = diff.computeHunks()
-    if (hunks.size == 0) { throw Exception("should have hunks") }
+    if (hunks.size == 0) {
+        throw Exception("should have hunks")
+    }
     // 第一个 hunk 应该是 b->x 的修改
     let firstHunk = hunks[0]
     if (firstHunk.oldLen == 0 && firstHunk.newLen == 0) {
@@ -326,8 +400,12 @@ func testDiffHunksPureAddition(): Unit {
     let input = InternedInput.new("", "abc")
     let diff = Diff.compute(Algorithm.Myers, input)
     let hunks = diff.computeHunks()
-    if (hunks.size != 1) { throw Exception("should have 1 hunk") }
-    if (!hunks[0].isPureInsertion()) { throw Exception("should be pure insertion") }
+    if (hunks.size != 1) {
+        throw Exception("should have 1 hunk")
+    }
+    if (!hunks[0].isPureInsertion()) {
+        throw Exception("should be pure insertion")
+    }
 }
 
 @Test
@@ -336,6 +414,10 @@ func testDiffHunksPureDeletion(): Unit {
     let input = InternedInput.new("abc", "")
     let diff = Diff.compute(Algorithm.Myers, input)
     let hunks = diff.computeHunks()
-    if (hunks.size != 1) { throw Exception("should have 1 hunk") }
-    if (!hunks[0].isPureRemoval()) { throw Exception("should be pure removal") }
+    if (hunks.size != 1) {
+        throw Exception("should have 1 hunk")
+    }
+    if (!hunks[0].isPureRemoval()) {
+        throw Exception("should be pure removal")
+    }
 }

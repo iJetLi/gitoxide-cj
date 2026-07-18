@@ -553,7 +553,6 @@ public class SymlinkCheck {
     }
 }
 
-
 // ============================================================
 // index_as_worktree 错误类型 - 对齐 gix-status/src/index_as_worktree/types.rs Error
 // ============================================================

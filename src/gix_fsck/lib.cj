@@ -58,26 +58,22 @@ public enum FsckErrorKind {
 extend FsckErrorKind <: Equatable<FsckErrorKind> {
     public operator func ==(other: FsckErrorKind): Bool {
         match (this) {
-            case FsckErrorKind.MissingObject =>
-                match (other) {
-                    case FsckErrorKind.MissingObject => true
-                    case _ => false
-                }
-            case FsckErrorKind.CorruptObject =>
-                match (other) {
-                    case FsckErrorKind.CorruptObject => true
-                    case _ => false
-                }
-            case FsckErrorKind.DanglingReference =>
-                match (other) {
-                    case FsckErrorKind.DanglingReference => true
-                    case _ => false
-                }
-            case FsckErrorKind.MissingReference =>
-                match (other) {
-                    case FsckErrorKind.MissingReference => true
-                    case _ => false
-                }
+            case FsckErrorKind.MissingObject => match (other) {
+                case FsckErrorKind.MissingObject => true
+                case _ => false
+            }
+            case FsckErrorKind.CorruptObject => match (other) {
+                case FsckErrorKind.CorruptObject => true
+                case _ => false
+            }
+            case FsckErrorKind.DanglingReference => match (other) {
+                case FsckErrorKind.DanglingReference => true
+                case _ => false
+            }
+            case FsckErrorKind.MissingReference => match (other) {
+                case FsckErrorKind.MissingReference => true
+                case _ => false
+            }
         }
     }
 }

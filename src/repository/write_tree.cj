@@ -153,7 +153,11 @@ func indexModeToEntryMode(mode: Int64): EntryMode {
 // 返回 ["src/lib", "src/test"]（不包含 "src/lib/core"，因为它是 "src/lib" 的子目录）
 func findChildDirs(dirPath: String, dirGroups: ArrayList<DirGroup>): ArrayList<String> {
     var candidates = ArrayList<String>()
-    let prefix = if (dirPath.size > 0) { dirPath + "/" } else { "" }
+    let prefix = if (dirPath.size > 0) {
+        dirPath + "/"
+    } else {
+        ""
+    }
     let prefixLen = prefix.size
     for (g in dirGroups) {
         let key = g.dirPath
@@ -161,18 +165,26 @@ func findChildDirs(dirPath: String, dirGroups: ArrayList<DirGroup>): ArrayList<S
             if (!key.contains("/") && key.size > 0) {
                 var alreadyAdded = false
                 for (c in candidates) {
-                    if (c == key) { alreadyAdded = true }
+                    if (c == key) {
+                        alreadyAdded = true
+                    }
                 }
-                if (!alreadyAdded) { candidates.add(key) }
+                if (!alreadyAdded) {
+                    candidates.add(key)
+                }
             } else if (key.contains("/") && key.size > 0) {
                 let firstSlash = key.indexOf("/")
                 if (let Some(idx) <- firstSlash) {
                     let firstDir = key[0..idx]
                     var alreadyAdded = false
                     for (c in candidates) {
-                        if (c == firstDir) { alreadyAdded = true }
+                        if (c == firstDir) {
+                            alreadyAdded = true
+                        }
                     }
-                    if (!alreadyAdded) { candidates.add(firstDir) }
+                    if (!alreadyAdded) {
+                        candidates.add(firstDir)
+                    }
                 }
             }
         } else {
@@ -184,16 +196,24 @@ func findChildDirs(dirPath: String, dirGroups: ArrayList<DirGroup>): ArrayList<S
                         let firstDir = key[0..(prefixLen + idx)]
                         var alreadyAdded = false
                         for (c in candidates) {
-                            if (c == firstDir) { alreadyAdded = true }
+                            if (c == firstDir) {
+                                alreadyAdded = true
+                            }
                         }
-                        if (!alreadyAdded) { candidates.add(firstDir) }
+                        if (!alreadyAdded) {
+                            candidates.add(firstDir)
+                        }
                     }
                 } else {
                     var alreadyAdded = false
                     for (c in candidates) {
-                        if (c == key) { alreadyAdded = true }
+                        if (c == key) {
+                            alreadyAdded = true
+                        }
                     }
-                    if (!alreadyAdded) { candidates.add(key) }
+                    if (!alreadyAdded) {
+                        candidates.add(key)
+                    }
                 }
             }
         }
@@ -211,8 +231,16 @@ func sortTreeEntries(entries: ArrayList<Entry>): Unit {
         while (j < entries.size) {
             let a = entries[i]
             let b = entries[j]
-            let aKey = if (a.mode.isTree()) { a.filename + "/" } else { a.filename }
-            let bKey = if (b.mode.isTree()) { b.filename + "/" } else { b.filename }
+            let aKey = if (a.mode.isTree()) {
+                a.filename + "/"
+            } else {
+                a.filename
+            }
+            let bKey = if (b.mode.isTree()) {
+                b.filename + "/"
+            } else {
+                b.filename
+            }
             if (aKey > bKey) {
                 entries[i] = b
                 entries[j] = a

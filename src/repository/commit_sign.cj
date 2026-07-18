@@ -136,21 +136,31 @@ public class CommitSignQuery {
         }
         var sigLines = signature.split("\n")
         var sigBlock = ArrayList<Byte>()
-        for (b in "gpgsig ".toArray()) { sigBlock.add(b) }
+        for (b in "gpgsig ".toArray()) {
+            sigBlock.add(b)
+        }
         var first = true
         for (line in sigLines) {
             if (!first) {
                 sigBlock.add(UInt8(10))
                 sigBlock.add(UInt8(32))
             }
-            for (b in line.toArray()) { sigBlock.add(b) }
+            for (b in line.toArray()) {
+                sigBlock.add(b)
+            }
             first = false
         }
         sigBlock.add(UInt8(10))
         var result = ArrayList<Byte>()
-        for (k in 0..blankLinePos) { result.add(raw[k]) }
-        for (b in sigBlock) { result.add(b) }
-        for (k in blankLinePos..raw.size) { result.add(raw[k]) }
+        for (k in 0..blankLinePos) {
+            result.add(raw[k])
+        }
+        for (b in sigBlock) {
+            result.add(b)
+        }
+        for (k in blankLinePos..raw.size) {
+            result.add(raw[k])
+        }
         result.toArray()
     }
 
@@ -205,8 +215,12 @@ public class CommitSignQuery {
         }
         if (sigStart >= 0 && sigEnd > sigStart) {
             var result = ArrayList<Byte>()
-            for (k in 0..sigStart) { result.add(raw[k]) }
-            for (k in sigEnd..raw.size) { result.add(raw[k]) }
+            for (k in 0..sigStart) {
+                result.add(raw[k])
+            }
+            for (k in sigEnd..raw.size) {
+                result.add(raw[k])
+            }
             return result.toArray()
         }
         raw
@@ -243,17 +257,23 @@ public class CommitSignQuery {
                 if (exists(sigPath)) {
                     let sigData = readFileBytes(sigPath)
                     remove(sigPath)
-                    if (exists(dataPath)) { remove(dataPath) }
+                    if (exists(dataPath)) {
+                        remove(dataPath)
+                    }
                     return Some(String.fromUtf8(sigData))
                 }
                 let gpgPath = dataPath + ".gpg"
                 if (exists(gpgPath)) {
                     let sigData = readFileBytes(gpgPath)
                     remove(gpgPath)
-                    if (exists(dataPath)) { remove(dataPath) }
+                    if (exists(dataPath)) {
+                        remove(dataPath)
+                    }
                     return Some(String.fromUtf8(sigData))
                 }
-                if (exists(dataPath)) { remove(dataPath) }
+                if (exists(dataPath)) {
+                    remove(dataPath)
+                }
             } catch (_: Exception) {
             }
 
@@ -295,8 +315,12 @@ public class CommitSignQuery {
             let result = runPrepare(p2)
 
             try {
-                if (exists(sigPath)) { remove(sigPath) }
-                if (exists(dataPath)) { remove(dataPath) }
+                if (exists(sigPath)) {
+                    remove(sigPath)
+                }
+                if (exists(dataPath)) {
+                    remove(dataPath)
+                }
             } catch (_: Exception) {
             }
 
@@ -318,32 +342,54 @@ public class CommitSignQuery {
     func serializeCommitRef(c: CommitRef): Array<Byte> {
         var result = ArrayList<Byte>()
         // tree <hash>\n
-        for (b in "tree ".toArray()) { result.add(b) }
-        for (b in c.tree.toArray()) { result.add(b) }
+        for (b in "tree ".toArray()) {
+            result.add(b)
+        }
+        for (b in c.tree.toArray()) {
+            result.add(b)
+        }
         result.add(UInt8(10))
         // parent <hash>\n
         for (p in c.parents) {
-            for (b in "parent ".toArray()) { result.add(b) }
-            for (b in p.toArray()) { result.add(b) }
+            for (b in "parent ".toArray()) {
+                result.add(b)
+            }
+            for (b in p.toArray()) {
+                result.add(b)
+            }
             result.add(UInt8(10))
         }
         // author <sig>\n
-        for (b in "author ".toArray()) { result.add(b) }
-        for (b in c.author.toArray()) { result.add(b) }
+        for (b in "author ".toArray()) {
+            result.add(b)
+        }
+        for (b in c.author.toArray()) {
+            result.add(b)
+        }
         result.add(UInt8(10))
         // committer <sig>\n
-        for (b in "committer ".toArray()) { result.add(b) }
-        for (b in c.committer.toArray()) { result.add(b) }
+        for (b in "committer ".toArray()) {
+            result.add(b)
+        }
+        for (b in c.committer.toArray()) {
+            result.add(b)
+        }
         result.add(UInt8(10))
         // encoding <enc>\n
         if (let Some(enc) <- c.encoding) {
-            for (b in "encoding ".toArray()) { result.add(b) }
-            for (b in enc.toArray()) { result.add(b) }
+            for (b in "encoding ".toArray()) {
+                result.add(b)
+            }
+            for (b in enc.toArray()) {
+                result.add(b)
+            }
             result.add(UInt8(10))
         }
         // extra headers
         for ((name, value) in c.extraHeaders) {
-            for (b in name.toArray()) { result.add(b) }
+            for (b in name.toArray()) {
+                result.add(b)
+            }
             result.add(UInt8(32))
             // 多行头部值（如 gpgsig）需要空格前缀续行
             var isFirstLine = true
@@ -353,7 +399,9 @@ public class CommitSignQuery {
                     result.add(UInt8(10))
                     result.add(UInt8(32))
                 }
-                for (b in line.toArray()) { result.add(b) }
+                for (b in line.toArray()) {
+                    result.add(b)
+                }
                 isFirstLine = false
             }
             result.add(UInt8(10))
@@ -361,7 +409,9 @@ public class CommitSignQuery {
         // 空行
         result.add(UInt8(10))
         // 消息
-        for (b in c.message.toArray()) { result.add(b) }
+        for (b in c.message.toArray()) {
+            result.add(b)
+        }
         result.toArray()
     }
 

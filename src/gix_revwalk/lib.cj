@@ -182,8 +182,8 @@ public class Graph {
     // 清除所有提交节点的关联数据标志位
     // 参数 reset：重置值
     public func clearCommitData(reset: UInt8): Unit {
-        commits.forEachValue({ node =>
-            node.data = reset
+        commits.forEachValue({
+            node => node.data = reset
         })
     }
 

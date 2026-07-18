@@ -356,6 +356,9 @@ class DummyTransport <: ClientTransport {
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
         None
     }
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
+        None
+    }
 }
 
 // ============================================================
@@ -421,7 +424,9 @@ func testHttpTransportHandshakeRefContent(): Unit {
                 foundMain = true
                 // 验证 ObjectId 是有效的 40 字符 hex
                 if (refObjectId(r).getOrThrow().toHexString().size != 40) {
-                    throw Exception("ObjectId should be 40 hex chars, got " + refObjectId(r).getOrThrow().toHexString().size.toString())
+                    throw Exception(
+                        "ObjectId should be 40 hex chars, got " +
+                            refObjectId(r).getOrThrow().toHexString().size.toString())
                 }
             }
         }

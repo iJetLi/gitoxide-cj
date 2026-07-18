@@ -81,7 +81,11 @@ public class StatusQuery {
                 if (name == "." || name == ".." || name == ".git") {
                     continue
                 }
-                let relPath = if (prefix.size > 0) { prefix + "/" + name } else { name }
+                let relPath = if (prefix.size > 0) {
+                    prefix + "/" + name
+                } else {
+                    name
+                }
                 let absPath = dir + "/" + name
                 if (isDirectory(absPath)) {
                     findUntrackedFiles(absPath, relPath, indexPaths, status)

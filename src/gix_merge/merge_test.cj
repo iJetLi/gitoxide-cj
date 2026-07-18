@@ -272,7 +272,8 @@ func testThreeWayMergeSingleLineIdenticalChange(): Unit {
 
 @Test
 func testResolutionVariants(): Unit {
-    let variants: Array<Resolution> = [Resolution.Complete, Resolution.CompleteWithAutoResolvedConflict, Resolution.Conflict]
+    let variants: Array<Resolution> = [Resolution.Complete, Resolution.CompleteWithAutoResolvedConflict,
+        Resolution.Conflict]
     if (variants.size != 3) {
         throw Exception("should have 3 Resolution variants")
     }
@@ -502,8 +503,12 @@ func testTextMergeConflictKeepMerge(): Unit {
             var hasOursMarker = false
             var hasTheirsMarker = false
             for (line in cc.lines) {
-                if (line.contains("<<<<<<<")) { hasOursMarker = true }
-                if (line.contains(">>>>>>>")) { hasTheirsMarker = true }
+                if (line.contains("<<<<<<<")) {
+                    hasOursMarker = true
+                }
+                if (line.contains(">>>>>>>")) {
+                    hasTheirsMarker = true
+                }
             }
             if (!hasOursMarker) {
                 throw Exception("should have <<<<<<< marker")
@@ -524,7 +529,9 @@ func testTextMergeConflictKeepDiff3(): Unit {
         case MergeResult.Conflict(cc) =>
             var hasBaseMarker = false
             for (line in cc.lines) {
-                if (line.contains("|||||||")) { hasBaseMarker = true }
+                if (line.contains("|||||||")) {
+                    hasBaseMarker = true
+                }
             }
             if (!hasBaseMarker) {
                 throw Exception("Diff3 should have ||||||| marker for base")
@@ -606,7 +613,8 @@ func testTextMergeOptionsDefault(): Unit {
 
 @Test
 func testResourceKindVariants(): Unit {
-    let kinds: Array<ResourceKind> = [ResourceKind.CurrentOrOurs, ResourceKind.OtherOrTheirs, ResourceKind.CommonAncestorOrBase]
+    let kinds: Array<ResourceKind> = [ResourceKind.CurrentOrOurs, ResourceKind.OtherOrTheirs,
+        ResourceKind.CommonAncestorOrBase]
     if (kinds.size != 3) {
         throw Exception("should have 3 ResourceKind variants")
     }
@@ -626,7 +634,8 @@ func testPickVariants(): Unit {
 
 @Test
 func testBinaryResolveWithVariants(): Unit {
-    let resolves: Array<BinaryResolveWith> = [BinaryResolveWith.Ancestor, BinaryResolveWith.Ours, BinaryResolveWith.Theirs]
+    let resolves: Array<BinaryResolveWith> = [BinaryResolveWith.Ancestor, BinaryResolveWith.Ours,
+        BinaryResolveWith.Theirs]
     if (resolves.size != 3) {
         throw Exception("should have 3 BinaryResolveWith variants")
     }

@@ -219,7 +219,8 @@ public class ConfigFile {
         if (let Some(v) <- valueOpt) {
             if (expectedType == "bool") {
                 let lower = toLowerStr(v)
-                lower == "true" || lower == "false" || lower == "yes" || lower == "no" || lower == "on" || lower == "off" || lower == "1" || lower == "0"
+                lower == "true" || lower == "false" || lower == "yes" || lower == "no" || lower == "on" || lower == "off" ||
+                    lower == "1" || lower == "0"
             } else if (expectedType == "int") {
                 var valid = true
                 var start: Int64 = 0

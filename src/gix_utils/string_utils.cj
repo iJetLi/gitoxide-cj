@@ -11,15 +11,15 @@ import std.fs.*
 
 // 常用 ASCII 字符常量，用 Rune 字面量转换，直观可读
 // 对齐 Rust: b'\n', b'\r', b'/', b'{', b':', b' ', b'\t' 等
-public let CHAR_LF: UInt8 = UInt8(UInt32(r'\n'))       // 换行 \n
-public let CHAR_CR: UInt8 = UInt8(UInt32(r'\r'))       // 回车 \r
-public let CHAR_SLASH: UInt8 = UInt8(UInt32(r'/'))     // 斜杠 /
-public let CHAR_LBRACE: UInt8 = UInt8(UInt32(r'{'))    // 左花括号 {
-public let CHAR_COLON: UInt8 = UInt8(UInt32(r':'))     // 冒号 :
-public let CHAR_SPACE: UInt8 = UInt8(UInt32(r' '))     // 空格
-public let CHAR_TAB: UInt8 = UInt8(UInt32(r'\t'))      // 制表符 \t
-public let CHAR_DOT: UInt8 = UInt8(UInt32(r'.'))       // 点 .
-public let CHAR_NULL: UInt8 = UInt8(UInt32(r'\0'))     // 空字符 \0
+public let CHAR_LF: UInt8 = UInt8(UInt32(r'\n')) // 换行 \n
+public let CHAR_CR: UInt8 = UInt8(UInt32(r'\r')) // 回车 \r
+public let CHAR_SLASH: UInt8 = UInt8(UInt32(r'/')) // 斜杠 /
+public let CHAR_LBRACE: UInt8 = UInt8(UInt32(r'{')) // 左花括号 {
+public let CHAR_COLON: UInt8 = UInt8(UInt32(r':')) // 冒号 :
+public let CHAR_SPACE: UInt8 = UInt8(UInt32(r' ')) // 空格
+public let CHAR_TAB: UInt8 = UInt8(UInt32(r'\t')) // 制表符 \t
+public let CHAR_DOT: UInt8 = UInt8(UInt32(r'.')) // 点 .
+public let CHAR_NULL: UInt8 = UInt8(UInt32(r'\0')) // 空字符 \0
 
 public func parseInt(s: String): ?Int64 {
     try {

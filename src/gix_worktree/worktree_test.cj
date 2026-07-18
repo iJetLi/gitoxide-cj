@@ -243,7 +243,6 @@ func testWorktreeStatusInequalityAllPairs(): Unit {
     }
 }
 
-
 // ============================================================
 // StackState 测试 - 对齐 gix-worktree/src/stack/state/mod.rs
 // ============================================================

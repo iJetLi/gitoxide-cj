@@ -58,10 +58,11 @@ func testChunkFileParseValidTwoChunks(): Unit {
     // 数据: chunk1_data(4) + chunk2_data(3) = 7 字节
     var data = ArrayList<Byte>()
     // 头部: signature = "CGPH"
-    data.add(UInt8(67))  // C
-    data.add(UInt8(71))  // G
-    data.add(UInt8(80))  // P
-    data.add(UInt8(72))  // H
+    data.add(UInt8(67)) // C
+    data.add(UInt8(71)) // G
+    data.add(UInt8(80)) // P
+    data.add(UInt8(72)) // H
+
     // version = 1
     data.add(UInt8(0))
     data.add(UInt8(0))
@@ -73,27 +74,53 @@ func testChunkFileParseValidTwoChunks(): Unit {
     data.add(UInt8(0))
     data.add(UInt8(2))
     // TOC entry 1: kind = "OIDF", offset = 60 (12+48)
-    data.add(UInt8(79))   // O
-    data.add(UInt8(73))   // I
-    data.add(UInt8(68))   // D
-    data.add(UInt8(70))   // F
-    data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0))
-    data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(60))
+    data.add(UInt8(79)) // O
+    data.add(UInt8(73)) // I
+    data.add(UInt8(68)) // D
+    data.add(UInt8(70)) // F
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0))
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(60))
     // TOC entry 2: kind = "DATA", offset = 64 (60+4)
-    data.add(UInt8(68))   // D
-    data.add(UInt8(65))   // A
-    data.add(UInt8(84))   // T
-    data.add(UInt8(65))   // A
-    data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0))
-    data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(64))
+    data.add(UInt8(68)) // D
+    data.add(UInt8(65)) // A
+    data.add(UInt8(84)) // T
+    data.add(UInt8(65)) // A
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0))
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(64))
     // Sentinel: kind = 0x00000000, offset = 67 (64+3)
-    data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0))
-    data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0))
-    data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(0)); data.add(UInt8(67))
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0))
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0))
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(0));
+    data.add(UInt8(67))
     // Chunk 1 数据: "abcd" (4 字节)
-    data.add(UInt8(97)); data.add(UInt8(98)); data.add(UInt8(99)); data.add(UInt8(100))
+    data.add(UInt8(97));
+    data.add(UInt8(98));
+    data.add(UInt8(99));
+    data.add(UInt8(100))
     // Chunk 2 数据: "xyz" (3 字节)
-    data.add(UInt8(120)); data.add(UInt8(121)); data.add(UInt8(122))
+    data.add(UInt8(120));
+    data.add(UInt8(121));
+    data.add(UInt8(122))
     let arr = data.toArray()
     let result = ChunkFile.parse(arr)
     if (result.isNone()) {

@@ -573,6 +573,9 @@ class DummyClientTransport <: ClientTransport {
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
         None
     }
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
+        None
+    }
 }
 
 // 返回数据的 V2 transport 实现
@@ -585,6 +588,9 @@ class ReturningClientTransport <: ClientTransport {
         Some(HandshakeResult(refs, ProtocolVersion.V2, caps))
     }
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
+        None
+    }
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
         None
     }
 }
@@ -601,6 +607,9 @@ class ReturningV1ClientTransport <: ClientTransport {
         Some(HandshakeResult(refs, ProtocolVersion.V1, caps))
     }
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
+        None
+    }
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
         None
     }
 }

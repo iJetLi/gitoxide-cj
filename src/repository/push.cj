@@ -199,9 +199,8 @@ public class PushQuery {
 
     // 解析远程仓库名称或 URL
     func resolveRemoteUrl(nameOrUrl: String): ?String {
-        if (nameOrUrl.startsWith("http://") || nameOrUrl.startsWith("https://") ||
-            nameOrUrl.startsWith("git://") || nameOrUrl.startsWith("ssh://") ||
-            nameOrUrl.startsWith("file://")) {
+        if (nameOrUrl.startsWith("http://") || nameOrUrl.startsWith("https://") || nameOrUrl.startsWith("git://") ||
+            nameOrUrl.startsWith("ssh://") || nameOrUrl.startsWith("file://")) {
             return Some(nameOrUrl)
         }
         // 优先使用 pushUrl，回退到 url

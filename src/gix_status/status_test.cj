@@ -798,7 +798,6 @@ func testRewriteOutcomeDefaults(): Unit {
     }
 }
 
-
 // ============================================================
 // StatusError 测试 - 对齐 gix-status/src/index_as_worktree/types.rs Error
 // ============================================================
@@ -846,11 +845,10 @@ func testRenameStatusErrorVariants(): Unit {
         case _ => throw Exception("should be DirWalk")
     }
     match (e3) {
-        case RenameStatusError.TrackedFileModifications(inner) =>
-            match (inner) {
-                case StatusError.Io(_) => true;
-                case _ => throw Exception("inner should be Io")
-            }
+        case RenameStatusError.TrackedFileModifications(inner) => match (inner) {
+            case StatusError.Io(_) => true;
+            case _ => throw Exception("inner should be Io")
+        }
         case _ => throw Exception("should be TrackedFileModifications")
     }
 }

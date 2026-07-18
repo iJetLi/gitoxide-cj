@@ -4,6 +4,9 @@ A native Git library implemented in [Cangjie (仓颉)](https://cangjie-lang.cn/)
 
 gitoxide-cj provides a complete set of Git plumbing packages for building Git-compatible applications in Cangjie, covering object storage, reference management, protocol communication, index operations, and more.
 
+## Rust aligned:
+commit:6d95da6e7082e19a03123ad765b3d5f117731621 Date:   Fri Jul 10 08:42:32 2026
+
 ## Usage
 
 ### As a Library

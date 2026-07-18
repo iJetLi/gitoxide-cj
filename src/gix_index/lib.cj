@@ -212,7 +212,11 @@ public class IndexFile {
             entries.add(entry)
             let entryLen = 62 + pathLen
             let rawPad = (8 - (entryLen % 8)) % 8
-            let padding = if (rawPad == 0) { 8 } else { rawPad }
+            let padding = if (rawPad == 0) {
+                8
+            } else {
+                rawPad
+            }
             pos = entryStart + entryLen + padding
             i += 1
         }
@@ -298,7 +302,11 @@ public class IndexFile {
             }
             let entryLen = 62 + pathBytes.size
             let rawPad = (8 - (entryLen % 8)) % 8
-            let padding = if (rawPad == 0) { 8 } else { rawPad }
+            let padding = if (rawPad == 0) {
+                8
+            } else {
+                rawPad
+            }
             var p: Int64 = 0
             while (p < padding) {
                 result.add(UInt8(0))

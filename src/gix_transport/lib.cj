@@ -117,17 +117,13 @@ public enum Ref {
 // 返回 (name, target, peeled)
 public func refUnpack(r: Ref): (String, ?ObjectId, ?ObjectId) {
     match (r) {
-        case Ref.Direct(name, object) =>
-            (name, Some(object), None)
-        case Ref.Symbolic(name, _, tag, object) =>
-            match (tag) {
-                case Some(t) => (name, Some(t), Some(object))
-                case None => (name, Some(object), None)
-            }
-        case Ref.Peeled(name, tag, peeled) =>
-            (name, Some(tag), Some(peeled))
-        case Ref.Unborn(name, _) =>
-            (name, None, None)
+        case Ref.Direct(name, object) => (name, Some(object), None)
+        case Ref.Symbolic(name, _, tag, object) => match (tag) {
+            case Some(t) => (name, Some(t), Some(object))
+            case None => (name, Some(object), None)
+        }
+        case Ref.Peeled(name, tag, peeled) => (name, Some(tag), Some(peeled))
+        case Ref.Unborn(name, _) => (name, None, None)
     }
 }
 
@@ -221,13 +217,13 @@ public class PushRefUpdateStatus {
 // ACK 类型，对齐 Rust gix_protocol::fetch::response::Acknowledgement
 public enum Acknowledgement {
     | Common(ObjectId) // 远程确认共有的对象
-    | Ready           // 服务器准备接收更多行
-    | Nak             // 服务器尚未准备好
+    | Ready // 服务器准备接收更多行
+    | Nak // 服务器尚未准备好
 }
 
 // 浅克隆更新类型，对齐 Rust gix_shallow::Update
 public enum ShallowUpdate {
-    | Shallow(ObjectId)   // 浅克隆边界
+    | Shallow(ObjectId) // 浅克隆边界
     | Unshallow(ObjectId) // 取消浅克隆边界
 }
 
@@ -879,7 +875,7 @@ public class HttpTransport <: ClientTransport {
                         refUpdates.add(PushRefUpdateStatus(rest, "failed", None))
                     }
                 } else if (lineStr.startsWith("unpack ok")) {
-                    // unpack 成功
+                // unpack 成功
                 } else if (lineStr.startsWith("unpack ")) {
                     errorMessage = Some(lineStr)
                 }
@@ -1366,7 +1362,7 @@ public class TlsHttpTransport <: ClientTransport {
                         refUpdates.add(PushRefUpdateStatus(rest, "failed", None))
                     }
                 } else if (lineStr.startsWith("unpack ok")) {
-                    // unpack ok
+                // unpack ok
                 } else if (lineStr.startsWith("unpack ")) {
                     errorMessage = Some(lineStr)
                 }
@@ -1506,20 +1502,20 @@ func extractTrailingNumber(s: String): ?String {
 // 命令类型，对齐 Rust gix_protocol::Command
 public enum Command {
     | LsRefs // 列出引用
-    | Fetch  // 抓取包
-    | Push   // 推送包
+    | Fetch // 抓取包
+    | Push // 推送包
 }
 
 // 写入模式，对齐 Rust gix_transport::client::WriteMode
 public enum WriteMode {
-    | Binary                     // 二进制模式，每次写入为原始字节
+    | Binary // 二进制模式，每次写入为原始字节
     | OneLfTerminatedLinePerWriteCall // 文本模式，每次写入为一行 pkt-line
 }
 
 // 消息类型，对齐 Rust gix_transport::client::MessageKind
 public enum MessageKind {
-    | Flush       // flush 包
-    | Delimiter   // V2 分隔符
+    | Flush // flush 包
+    | Delimiter // V2 分隔符
     | ResponseEnd // 响应结束
     | Text(String) // 文本内容
 }

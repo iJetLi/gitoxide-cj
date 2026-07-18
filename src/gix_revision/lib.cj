@@ -55,7 +55,9 @@ public enum SpecKind {
 // 支持完整哈希、refs/ 前缀引用、HEAD、^ 父提交、~N 祖先、@{N} 历史位置、:path 路径规格
 public func resolve(spec: Spec, resolver: ResolveRef): ?ObjectId {
     let s = spec.raw
-    if (s.size == 0) { return None }
+    if (s.size == 0) {
+        return None
+    }
 
     // 完整哈希
     if (s.size == 40 || s.size == 64) {
@@ -68,7 +70,9 @@ public func resolve(spec: Spec, resolver: ResolveRef): ?ObjectId {
         if (ti > 0) {
             let baseSpec = Spec(substringStr(s, 0, ti))
             let baseId = resolve(baseSpec, resolver)
-            if (baseId.isNone()) { return None }
+            if (baseId.isNone()) {
+                return None
+            }
             var n: Int64 = 1
             if (ti + 1 < s.size) {
                 let numStr = substringFromStr(s, ti + 1)
@@ -78,7 +82,9 @@ public func resolve(spec: Spec, resolver: ResolveRef): ?ObjectId {
             var step: Int64 = 0
             while (step < n) {
                 let parent = resolver.resolveParent(current)
-                if (parent.isNone()) { return None }
+                if (parent.isNone()) {
+                    return None
+                }
                 current = parent.getOrThrow()
                 step += 1
             }
@@ -235,7 +241,11 @@ public func mergeBase(first: ObjectId, others: Array<ObjectId>, graph: Graph): ?
     let bases = paintDownToCommon(first, others, graph)
     // 对齐 Rust: remove_redundant(&bases, graph)
     let reduced = removeRedundant(bases, graph)
-    if (reduced.size == 0) { None } else { Some(reduced) }
+    if (reduced.size == 0) {
+        None
+    } else {
+        Some(reduced)
+    }
 }
 
 // GenThenTime — 对齐 Rust: merge_base::function::GenThenTime
@@ -290,7 +300,8 @@ func paintDownToCommon(first: ObjectId, others: Array<ObjectId>, graph: Graph): 
         let commitOpt = graph.get(commitId)
         if (let Some(commit) <- commitOpt) {
             // 对齐 Rust: let mut flags_without_result = commit.data & (COMMIT1 | COMMIT2 | STALE)
-            var flagsWithoutResult = commit.data & (MergeBaseFlags.COMMIT1 | MergeBaseFlags.COMMIT2 | MergeBaseFlags.STALE)
+            var flagsWithoutResult = commit.data & (MergeBaseFlags.COMMIT1 | MergeBaseFlags.COMMIT2 | MergeBaseFlags
+                .STALE)
             // 对齐 Rust: if flags_without_result == (COMMIT1 | COMMIT2) { RESULT; STALE }
             if (flagsWithoutResult == (MergeBaseFlags.COMMIT1 | MergeBaseFlags.COMMIT2)) {
                 if ((commit.data & MergeBaseFlags.RESULT) == UInt8(0)) {
@@ -480,13 +491,19 @@ func removeRedundant(commits: ArrayList<(ObjectId, GenThenTime)>, graph: Graph):
 // ============================================================
 
 public func mergeBaseOctopus(first: ObjectId, others: Array<ObjectId>, graph: Graph): ?ObjectId {
-    if (others.size == 0) { return Some(first) }
+    if (others.size == 0) {
+        return Some(first)
+    }
     var current = first
     for (other in others) {
         let bases = mergeBase(current, [other], graph)
-        if (bases.isNone()) { return None }
+        if (bases.isNone()) {
+            return None
+        }
         let basesList = bases.getOrThrow()
-        if (basesList.size == 0) { return None }
+        if (basesList.size == 0) {
+            return None
+        }
         current = basesList[0]
     }
     Some(current)
@@ -617,7 +634,9 @@ public func describe(id: ObjectId, find: DescribeNameFinder, options: DescribeOp
         let entry = queue[0]
         queue.remove(at: 0)
         let hex = entry.id.toHexString()
-        if (visited.contains(hex)) { continue }
+        if (visited.contains(hex)) {
+            continue
+        }
         visited.add(hex)
         commitsSeen += 1
         // 检查此提交是否有名称

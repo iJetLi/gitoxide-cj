@@ -151,7 +151,6 @@ func testWorktreeStateMultipleToggles(): Unit {
 // 从实际工作区计算得出。仓颉中暂无法实现，待 gix_odb 与
 // gix_test_utils 文件系统夹具支持完善后补充。
 
-
 // ============================================================
 // CheckoutOutcome 测试 - 对齐 gix-worktree-state/src/checkout/mod.rs Outcome
 // ============================================================

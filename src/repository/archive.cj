@@ -39,7 +39,11 @@ public class ArchiveQuery {
 
     func addTreeEntries(archive: Archive, tree: TreeRef, prefix: String): Unit {
         for (entry in tree.entries) {
-            let path = if (prefix.size > 0) { prefix + "/" + entry.filename } else { entry.filename }
+            let path = if (prefix.size > 0) {
+                prefix + "/" + entry.filename
+            } else {
+                entry.filename
+            }
             if (entry.mode.isTree()) {
                 let subDataOpt = repo.readObject(entry.oid)
                 if (let Some(subData) <- subDataOpt) {

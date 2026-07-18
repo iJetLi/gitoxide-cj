@@ -22,16 +22,24 @@ public enum StreamEntryKind {
     // 目录条目
     | Tree
 }
+
 extend StreamEntryKind <: Equatable<StreamEntryKind> {
     public operator func ==(other: StreamEntryKind): Bool {
         match (this) {
-            case StreamEntryKind.Blob => match (other) { case StreamEntryKind.Blob => true; case _ => false }
-            case StreamEntryKind.Tree => match (other) { case StreamEntryKind.Tree => true; case _ => false }
+            case StreamEntryKind.Blob => match (other) {
+                case StreamEntryKind.Blob => true;
+                case _ => false
+            }
+            case StreamEntryKind.Tree => match (other) {
+                case StreamEntryKind.Tree => true;
+                case _ => false
+            }
         }
     }
-    public operator func !=(other: StreamEntryKind): Bool { !(this == other) }
+    public operator func !=(other: StreamEntryKind): Bool {
+        !(this == other)
+    }
 }
-
 
 // ============================================================
 // StreamEntry - 对齐 gix-worktree-stream/src/entry.rs Entry

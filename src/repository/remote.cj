@@ -128,9 +128,8 @@ public class RemoteQuery {
     // 对齐原版：gitoxide-core/src/repository/remote.rs::by_name_or_url()
     func resolveRemoteUrl(nameOrUrl: String): ?String {
         // 如果是 URL 格式直接返回
-        if (nameOrUrl.startsWith("http://") || nameOrUrl.startsWith("https://") ||
-            nameOrUrl.startsWith("git://") || nameOrUrl.startsWith("ssh://") ||
-            nameOrUrl.startsWith("file://")) {
+        if (nameOrUrl.startsWith("http://") || nameOrUrl.startsWith("https://") || nameOrUrl.startsWith("git://") ||
+            nameOrUrl.startsWith("ssh://") || nameOrUrl.startsWith("file://")) {
             return Some(nameOrUrl)
         }
         // 否则从配置中查找
@@ -237,7 +236,8 @@ public class RemoteRefsResult {
     public var capabilities: ArrayList<String>
     public var showHandshake: Bool
 
-    public init(refs: ArrayList<Ref>, protocolVersion: ProtocolVersion, capabilities: ArrayList<String>, showHandshake: Bool) {
+    public init(refs: ArrayList<Ref>, protocolVersion: ProtocolVersion, capabilities: ArrayList<String>,
+        showHandshake: Bool) {
         this.refs = refs
         this.protocolVersion = protocolVersion
         this.capabilities = capabilities
@@ -271,7 +271,8 @@ public class RefMapResult {
     public var refspecs: ArrayList<String>
     public var showUnmapped: Bool
 
-    public init(mappings: ArrayList<RefMapping>, unmapped: ArrayList<Ref>, refspecs: ArrayList<String>, showUnmapped: Bool) {
+    public init(mappings: ArrayList<RefMapping>, unmapped: ArrayList<Ref>, refspecs: ArrayList<String>,
+        showUnmapped: Bool) {
         this.mappings = mappings
         this.unmapped = unmapped
         this.refspecs = refspecs

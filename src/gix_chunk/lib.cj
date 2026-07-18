@@ -280,8 +280,8 @@ public func readChunkId(data: Array<Byte>, offset: Int64): ChunkId {
     if (offset + 4 > data.size) {
         return 0
     }
-    ((UInt32(data[offset]) << 24) | (UInt32(data[offset + 1]) << 16) |
-        (UInt32(data[offset + 2]) << 8) | UInt32(data[offset + 3]))
+    ((UInt32(data[offset]) << 24) | (UInt32(data[offset + 1]) << 16) | (UInt32(data[offset + 2]) << 8) | UInt32(data[offset +
+            3]))
 }
 
 // 读取 8 字节偏移量（大端序）
@@ -303,8 +303,8 @@ func readU32(data: Array<Byte>, offset: Int64): Int64 {
     if (offset + 4 > data.size) {
         return 0
     }
-    ((Int64(data[offset]) << 24) | (Int64(data[offset + 1]) << 16) |
-        (Int64(data[offset + 2]) << 8) | Int64(data[offset + 3]))
+    ((Int64(data[offset]) << 24) | (Int64(data[offset + 1]) << 16) | (Int64(data[offset + 2]) << 8) | Int64(data[offset +
+            3]))
 }
 
 // 写入 4 字节 chunk ID（大端序）

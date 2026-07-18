@@ -20,9 +20,18 @@ public enum Algorithm <: Equatable<Algorithm> {
 
     public operator func ==(other: Algorithm): Bool {
         match (this) {
-            case Myers => match (other) { case Myers => true case _ => false }
-            case Histogram => match (other) { case Histogram => true case _ => false }
-            case MyersMinimal => match (other) { case MyersMinimal => true case _ => false }
+            case Myers => match (other) {
+                case Myers => true
+                case _ => false
+            }
+            case Histogram => match (other) {
+                case Histogram => true
+                case _ => false
+            }
+            case MyersMinimal => match (other) {
+                case MyersMinimal => true
+                case _ => false
+            }
         }
     }
 }
@@ -181,15 +190,19 @@ public class Diff {
         }
         match (algo) {
             case Myers => myersDiff(before, after, removed, added, beforeStart, beforeEnd, afterStart, afterEnd, false)
-            case MyersMinimal => myersDiff(before, after, removed, added, beforeStart, beforeEnd, afterStart, afterEnd, true)
-            case Histogram => myersDiff(before, after, removed, added, beforeStart, beforeEnd, afterStart, afterEnd, false)
+            case MyersMinimal => myersDiff(before, after, removed, added, beforeStart, beforeEnd, afterStart, afterEnd,
+                true)
+            case Histogram => myersDiff(before, after, removed, added, beforeStart, beforeEnd, afterStart, afterEnd,
+                false)
         }
     }
 
     public func countAdditions(): Int64 {
         var count: Int64 = 0
         for (a in added) {
-            if (a) { count += 1 }
+            if (a) {
+                count += 1
+            }
         }
         count
     }
@@ -197,18 +210,24 @@ public class Diff {
     public func countRemovals(): Int64 {
         var count: Int64 = 0
         for (r in removed) {
-            if (r) { count += 1 }
+            if (r) {
+                count += 1
+            }
         }
         count
     }
 
     public func isRemoved(tokenIdx: Int64): Bool {
-        if (tokenIdx < 0 || tokenIdx >= removed.size) { return false }
+        if (tokenIdx < 0 || tokenIdx >= removed.size) {
+            return false
+        }
         removed[tokenIdx]
     }
 
     public func isAdded(tokenIdx: Int64): Bool {
-        if (tokenIdx < 0 || tokenIdx >= added.size) { return false }
+        if (tokenIdx < 0 || tokenIdx >= added.size) {
+            return false
+        }
         added[tokenIdx]
     }
 
@@ -365,32 +384,46 @@ public enum LineKind {
 // ============================================================
 
 func myersDiff(
-    before: ArrayList<Token>, after: ArrayList<Token>,
-    removed: ArrayList<Bool>, added: ArrayList<Bool>,
-    beforeStart: Int64, beforeEnd: Int64,
-    afterStart: Int64, afterEnd: Int64,
+    before: ArrayList<Token>,
+    after: ArrayList<Token>,
+    removed: ArrayList<Bool>,
+    added: ArrayList<Bool>,
+    beforeStart: Int64,
+    beforeEnd: Int64,
+    afterStart: Int64,
+    afterEnd: Int64,
     minimal: Bool
 ): Unit {
     let n = beforeEnd - beforeStart
     let m = afterEnd - afterStart
     if (n == 0) {
         var j: Int64 = afterStart
-        while (j < afterEnd) { added[j] = true; j += 1 }
+        while (j < afterEnd) {
+            added[j] = true
+            j += 1
+        }
         return
     }
     if (m == 0) {
         var i: Int64 = beforeStart
-        while (i < beforeEnd) { removed[i] = true; i += 1 }
+        while (i < beforeEnd) {
+            removed[i] = true
+            i += 1
+        }
         return
     }
     markDiffFromLCS(before, after, removed, added, beforeStart, beforeEnd, afterStart, afterEnd)
 }
 
 func markDiffFromLCS(
-    before: ArrayList<Token>, after: ArrayList<Token>,
-    removed: ArrayList<Bool>, added: ArrayList<Bool>,
-    beforeStart: Int64, beforeEnd: Int64,
-    afterStart: Int64, afterEnd: Int64
+    before: ArrayList<Token>,
+    after: ArrayList<Token>,
+    removed: ArrayList<Bool>,
+    added: ArrayList<Bool>,
+    beforeStart: Int64,
+    beforeEnd: Int64,
+    afterStart: Int64,
+    afterEnd: Int64
 ): Unit {
     let n = beforeEnd - beforeStart
     let m = afterEnd - afterStart
@@ -404,7 +437,11 @@ func markDiffFromLCS(
             if (bi < before.size && ai < after.size && before[bi] == after[ai]) {
                 dp[i][j] = dp[i - 1][j - 1] + 1
             } else {
-                dp[i][j] = if (dp[i - 1][j] > dp[i][j - 1]) { dp[i - 1][j] } else { dp[i][j - 1] }
+                dp[i][j] = if (dp[i - 1][j] > dp[i][j - 1]) {
+                    dp[i - 1][j]
+                } else {
+                    dp[i][j - 1]
+                }
             }
             j += 1
         }
@@ -453,7 +490,9 @@ class EdgeResult {
 func commonPrefix(file1: ArrayList<Token>, file2: ArrayList<Token>): Int64 {
     var off: Int64 = 0
     while (off < file1.size && off < file2.size) {
-        if (file1[off] != file2[off]) { break }
+        if (file1[off] != file2[off]) {
+            break
+        }
         off += 1
     }
     off
@@ -464,7 +503,9 @@ func commonPostfix(file1: ArrayList<Token>, file2: ArrayList<Token>): Int64 {
     var i1: Int64 = file1.size - 1
     var i2: Int64 = file2.size - 1
     while (i1 >= 0 && i2 >= 0) {
-        if (file1[i1] != file2[i2]) { break }
+        if (file1[i1] != file2[i2]) {
+            break
+        }
         off += 1
         i1 -= 1
         i2 -= 1
@@ -478,14 +519,15 @@ func commonEdges(file1: ArrayList<Token>, file2: ArrayList<Token>): EdgeResult {
     var i1: Int64 = file1.size - 1
     var i2: Int64 = file2.size - 1
     while (i1 >= prefix && i2 >= prefix) {
-        if (file1[i1] != file2[i2]) { break }
+        if (file1[i1] != file2[i2]) {
+            break
+        }
         off += 1
         i1 -= 1
         i2 -= 1
     }
     EdgeResult(prefix, off)
 }
-
 
 func strSubstring(s: String, start: Int64, len: Int64): String {
     var bytes = ArrayList<Byte>()
@@ -509,7 +551,9 @@ func strSubstringFrom(s: String, start: Int64): String {
 
 func splitLines(text: String): ArrayList<String> {
     let result = ArrayList<String>()
-    if (text.size == 0) { return result }
+    if (text.size == 0) {
+        return result
+    }
     var start: Int64 = 0
     var i: Int64 = 0
     while (i < text.size) {
@@ -543,8 +587,12 @@ func splitLines(text: String): ArrayList<String> {
 
 public func diffLines(oldLines: ArrayList<String>, newLines: ArrayList<String>): Diff {
     let input = InternedInput()
-    for (line in oldLines) { input.before.add(input.interner.intern(line)) }
-    for (line in newLines) { input.after.add(input.interner.intern(line)) }
+    for (line in oldLines) {
+        input.before.add(input.interner.intern(line))
+    }
+    for (line in newLines) {
+        input.after.add(input.interner.intern(line))
+    }
     let diff = Diff.compute(Algorithm.Myers, input)
     let hunks = diff.computeHunks()
     let result = Diff()

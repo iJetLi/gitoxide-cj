@@ -462,12 +462,12 @@ func parseLongKeywords(input: String, start: Int64, end: Int64, p: Pattern): ?St
         } else if (trimmed == "attr") {
         // 空属性声明
         } else if (trimmed.startsWith("attr:")) {
-        // 属性解析，对齐 Rust: gix_pathspec::parse::signature::attribute
-        let attrStr = substringFromStr(trimmed, 5)
-        let parsedAttrs = parseAttributes(attrStr)
-        if (parsedAttrs.isSome()) {
-            p.attributes = parsedAttrs.getOrThrow()
-        }
+            // 属性解析，对齐 Rust: gix_pathspec::parse::signature::attribute
+            let attrStr = substringFromStr(trimmed, 5)
+            let parsedAttrs = parseAttributes(attrStr)
+            if (parsedAttrs.isSome()) {
+                p.attributes = parsedAttrs.getOrThrow()
+            }
         } else {
             return Some(trimmed)
         }

@@ -305,7 +305,9 @@ public class TreeDepthfirst {
             let entry = stack[stack.size - 1]
             stack.remove(at: stack.size - 1)
             let dataOpt = finder.findObject(entry.treeId)
-            if (dataOpt.isNone()) { continue }
+            if (dataOpt.isNone()) {
+                continue
+            }
             let d = dataOpt.getOrThrow()
             let obj = d.decode()
             if (let Some(ObjectRef.Tree(tree)) <- obj) {
@@ -369,7 +371,9 @@ public class TreeBreadthfirst {
             let treeId = queue[0]
             queue.remove(at: 0)
             let dataOpt = finder.findObject(treeId)
-            if (dataOpt.isNone()) { continue }
+            if (dataOpt.isNone()) {
+                continue
+            }
             let d = dataOpt.getOrThrow()
             let obj = d.decode()
             if (let Some(ObjectRef.Tree(tree)) <- obj) {
@@ -378,8 +382,7 @@ public class TreeBreadthfirst {
                     if (isTree) {
                         let action = delegate.visitTree(e)
                         match (action) {
-                            case Action.Continue =>
-                                queue.add(ObjectId.fromHexOrThrow(e.oid.toHexString()))
+                            case Action.Continue => queue.add(ObjectId.fromHexOrThrow(e.oid.toHexString()))
                             case Action.Skip => ()
                             case Action.Cancel => return
                         }
@@ -457,7 +460,9 @@ public class Recorder <: Visit {
             var result = ""
             var i: Int64 = 0
             while (i < pathDeque.size) {
-                if (i > 0) { result += "/" }
+                if (i > 0) {
+                    result += "/"
+                }
                 result += pathDeque[i]
                 i += 1
             }

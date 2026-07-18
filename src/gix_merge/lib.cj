@@ -159,9 +159,18 @@ public enum Pick <: Equatable<Pick> {
 
     public operator func ==(other: Pick): Bool {
         match (this) {
-            case Ancestor => match (other) { case Ancestor => true case _ => false }
-            case Ours => match (other) { case Ours => true case _ => false }
-            case Theirs => match (other) { case Theirs => true case _ => false }
+            case Ancestor => match (other) {
+                case Ancestor => true
+                case _ => false
+            }
+            case Ours => match (other) {
+                case Ours => true
+                case _ => false
+            }
+            case Theirs => match (other) {
+                case Theirs => true
+                case _ => false
+            }
         }
     }
 }
@@ -249,7 +258,8 @@ func repeatChar(c: UInt8, count: Int64): String {
     result
 }
 
-func handleKeepConflict(keep: ConflictKeep, baseLines: ArrayList<String>, oursLines: ArrayList<String>, theirsLines: ArrayList<String>, labels: Labels): MergeResult {
+func handleKeepConflict(keep: ConflictKeep, baseLines: ArrayList<String>, oursLines: ArrayList<String>,
+    theirsLines: ArrayList<String>, labels: Labels): MergeResult {
     let conflict = ConflictContent()
     let markerSize = Int64(keep.markerSize)
     // 对齐 Rust: 冲突标记 — <<<<<<<, =======, >>>>>>>
@@ -265,13 +275,19 @@ func handleKeepConflict(keep: ConflictKeep, baseLines: ArrayList<String>, oursLi
     }
     if (keep.style == ConflictStyle.Merge) {
         conflict.lines.add(startMarker + " " + labelOrEmpty(labels.current))
-        for (line in oursLines) { conflict.lines.add(line) }
+        for (line in oursLines) {
+            conflict.lines.add(line)
+        }
         conflict.lines.add(midMarker)
-        for (line in theirsLines) { conflict.lines.add(line) }
+        for (line in theirsLines) {
+            conflict.lines.add(line)
+        }
         conflict.lines.add(endMarker + " " + labelOrEmpty(labels.other))
     } else {
         conflict.lines.add(startMarker + " " + labelOrEmpty(labels.current))
-        for (line in oursLines) { conflict.lines.add(line) }
+        for (line in oursLines) {
+            conflict.lines.add(line)
+        }
         // 生成 ||||||| 标记
         var baseMarkers = "|"
         var j: Int64 = 0
@@ -280,9 +296,13 @@ func handleKeepConflict(keep: ConflictKeep, baseLines: ArrayList<String>, oursLi
             j += 1
         }
         conflict.lines.add(baseMarkers + " " + labelOrEmpty(labels.ancestor))
-        for (line in baseLines) { conflict.lines.add(line) }
+        for (line in baseLines) {
+            conflict.lines.add(line)
+        }
         conflict.lines.add(midMarker)
-        for (line in theirsLines) { conflict.lines.add(line) }
+        for (line in theirsLines) {
+            conflict.lines.add(line)
+        }
         conflict.lines.add(endMarker + " " + labelOrEmpty(labels.other))
     }
     conflict.conflicts.add(Conflict(0, Int64(oursLines.size), 0, Int64(theirsLines.size)))
@@ -342,17 +362,19 @@ public func textMerge(base: String, ours: String, theirs: String, options: TextM
     let hasOverlap = hunksOverlap(oursHunks, theirsHunks)
     if (hasOverlap) {
         match (options.conflict) {
-            case ConflictStrategy.ResolveWithOurs =>
-                return MergeResult.Clean(MergedContent(oursLines))
-            case ConflictStrategy.ResolveWithTheirs =>
-                return MergeResult.Clean(MergedContent(theirsLines))
+            case ConflictStrategy.ResolveWithOurs => return MergeResult.Clean(MergedContent(oursLines))
+            case ConflictStrategy.ResolveWithTheirs => return MergeResult.Clean(MergedContent(theirsLines))
             case ConflictStrategy.ResolveWithUnion =>
                 let merged = ArrayList<String>()
-                for (line in oursLines) { merged.add(line) }
-                for (line in theirsLines) { merged.add(line) }
+                for (line in oursLines) {
+                    merged.add(line)
+                }
+                for (line in theirsLines) {
+                    merged.add(line)
+                }
                 return MergeResult.Clean(MergedContent(merged))
-            case ConflictStrategy.Keep(keep) =>
-                return handleKeepConflict(keep, baseLines, oursLines, theirsLines, labels)
+            case ConflictStrategy.Keep(keep) => return handleKeepConflict(keep, baseLines, oursLines, theirsLines,
+                labels)
         }
     }
 
@@ -443,8 +465,16 @@ func mergeChanges(base: ArrayList<String>, oursChanges: ArrayList<Change>, their
     var ti: Int64 = 0
 
     while (oi < oursChanges.size || ti < theirsChanges.size) {
-        let oc: ?Change = if (oi < oursChanges.size) { oursChanges[oi] } else { None }
-        let tc: ?Change = if (ti < theirsChanges.size) { theirsChanges[ti] } else { None }
+        let oc: ?Change = if (oi < oursChanges.size) {
+            oursChanges[oi]
+        } else {
+            None
+        }
+        let tc: ?Change = if (ti < theirsChanges.size) {
+            theirsChanges[ti]
+        } else {
+            None
+        }
 
         if (oc.isSome() && tc.isSome()) {
             let oChange = oc.getOrThrow()
@@ -496,7 +526,12 @@ func mergeChanges(base: ArrayList<String>, oursChanges: ArrayList<Change>, their
                     for (line in tChange.newLines) {
                         conflict.lines.add(line)
                     }
-                    conflict.conflicts.add(Conflict(Int64(conflict.lines.size) - Int64(oChange.newLines.size) - Int64(tChange.newLines.size), Int64(oChange.newLines.size) + Int64(tChange.newLines.size), 0, 0))
+                    conflict
+                        .conflicts
+                        .add(
+                            Conflict(
+                                Int64(conflict.lines.size) - Int64(oChange.newLines.size) - Int64(tChange.newLines.size),
+                                Int64(oChange.newLines.size) + Int64(tChange.newLines.size), 0, 0))
                     baseIdx += oChange.baseLen
                 }
                 oi += 1
@@ -619,10 +654,10 @@ func mergeNonOverlapping(baseLines: ArrayList<String>, oursLines: ArrayList<Stri
     var thIdx: Int64 = 0
 
     while (baseIdx < baseLines.size) {
-        let inOursHunk = ohIdx < oursHunks.size && baseIdx >= oursHunks[ohIdx].oldStart - 1 &&
-            baseIdx < oursHunks[ohIdx].oldStart - 1 + oursHunks[ohIdx].oldLen
-        let inTheirsHunk = thIdx < theirsHunks.size && baseIdx >= theirsHunks[thIdx].oldStart - 1 &&
-            baseIdx < theirsHunks[thIdx].oldStart - 1 + theirsHunks[thIdx].oldLen
+        let inOursHunk = ohIdx < oursHunks.size && baseIdx >= oursHunks[ohIdx].oldStart - 1 && baseIdx <
+            oursHunks[ohIdx].oldStart - 1 + oursHunks[ohIdx].oldLen
+        let inTheirsHunk = thIdx < theirsHunks.size && baseIdx >= theirsHunks[thIdx].oldStart - 1 && baseIdx <
+            theirsHunks[thIdx].oldStart - 1 + theirsHunks[thIdx].oldLen
 
         if (inOursHunk) {
             while (oursIdx < oursLines.size && inOursHunk) {
@@ -630,14 +665,18 @@ func mergeNonOverlapping(baseLines: ArrayList<String>, oursLines: ArrayList<Stri
                 oursIdx += 1
             }
             baseIdx += 1
-            if (ohIdx < oursHunks.size) { ohIdx += 1 }
+            if (ohIdx < oursHunks.size) {
+                ohIdx += 1
+            }
         } else if (inTheirsHunk) {
             while (theirsIdx < theirsLines.size && inTheirsHunk) {
                 result.add(theirsLines[theirsIdx])
                 theirsIdx += 1
             }
             baseIdx += 1
-            if (thIdx < theirsHunks.size) { thIdx += 1 }
+            if (thIdx < theirsHunks.size) {
+                thIdx += 1
+            }
         } else {
             result.add(baseLines[baseIdx])
             baseIdx += 1

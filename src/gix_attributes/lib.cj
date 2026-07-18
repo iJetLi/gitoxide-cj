@@ -13,10 +13,10 @@ import gitoxide.gix_utils.*
 // 属性状态枚举，对齐 Rust gix_attributes::State
 // 表示属性赋值的不同状态
 public enum AttributeState {
-    | Set          // 属性被设置（如 text）
-    | Unset        // 属性被取消（如 -diff）
+    | Set // 属性被设置（如 text）
+    | Unset // 属性被取消（如 -diff）
     | Value(String) // 属性有值（如 eol=lf）
-    | Unspecified  // 属性未指定（如 !diff）
+    | Unspecified // 属性未指定（如 !diff）
 
     public operator func ==(that: AttributeState): Bool {
         match (this) {
@@ -162,10 +162,8 @@ public class Attributes {
         }
         for (i in 0..name.size) {
             let c = name[i]
-            if (c == UInt8(45) || c == UInt8(46) || c == UInt8(95) ||
-                (c >= UInt8(65) && c <= UInt8(90)) ||
-                (c >= UInt8(97) && c <= UInt8(122)) ||
-                (c >= UInt8(48) && c <= UInt8(57))) {
+            if (c == UInt8(45) || c == UInt8(46) || c == UInt8(95) || (c >= UInt8(65) && c <= UInt8(90)) || (c >= UInt8(97) &&
+                c <= UInt8(122)) || (c >= UInt8(48) && c <= UInt8(57))) {
                 continue
             }
             return false
@@ -260,8 +258,12 @@ public class MacroDef {
 // wildmatch 模式标志，对齐 Rust: gix_glob::wildmatch::Mode
 public struct WildmatchMode {
     public var value: UInt8
-    public init() { value = 0 }
-    public init(v: UInt8) { value = v }
+    public init() {
+        value = 0
+    }
+    public init(v: UInt8) {
+        value = v
+    }
 
     public static let NO_MATCH_SLASH_LITERAL: UInt8 = 1
     public static let IGNORE_CASE: UInt8 = 2
@@ -278,8 +280,12 @@ public struct WildmatchMode {
 // Pattern 模式标志，对齐 Rust: gix_glob::pattern::Mode
 public struct PatternMode {
     public var value: UInt32
-    public init() { value = 0 }
-    public init(v: UInt32) { value = v }
+    public init() {
+        value = 0
+    }
+    public init(v: UInt32) {
+        value = v
+    }
 
     public static let NO_SUB_DIR: UInt32 = 1
     public static let ENDS_WITH: UInt32 = 2
@@ -370,11 +376,26 @@ enum WildmatchResult {
 
     public operator func ==(that: WildmatchResult): Bool {
         match (this) {
-            case Match => match (that) { case Match => true case _ => false }
-            case NoMatch => match (that) { case NoMatch => true case _ => false }
-            case AbortAll => match (that) { case AbortAll => true case _ => false }
-            case AbortToStarStar => match (that) { case AbortToStarStar => true case _ => false }
-            case RecursionLimitReached => match (that) { case RecursionLimitReached => true case _ => false }
+            case Match => match (that) {
+                case Match => true
+                case _ => false
+            }
+            case NoMatch => match (that) {
+                case NoMatch => true
+                case _ => false
+            }
+            case AbortAll => match (that) {
+                case AbortAll => true
+                case _ => false
+            }
+            case AbortToStarStar => match (that) {
+                case AbortToStarStar => true
+                case _ => false
+            }
+            case RecursionLimitReached => match (that) {
+                case RecursionLimitReached => true
+                case _ => false
+            }
         }
     }
 
@@ -387,9 +408,14 @@ let WILDMATCH_RECURSION_LIMIT: Int64 = 64
 
 // wildmatch 递归匹配核心，对齐 Rust: gix_glob::wildmatch::function::match_recursive
 func wildmatchRecursive(
-    pattern: String, pStart: Int64, pEnd: Int64,
-    text: String, tStart: Int64, tEnd: Int64,
-    mode: WildmatchMode, depth: Int64
+    pattern: String,
+    pStart: Int64,
+    pEnd: Int64,
+    text: String,
+    tStart: Int64,
+    tEnd: Int64,
+    mode: WildmatchMode,
+    depth: Int64
 ): WildmatchResult {
     if (depth >= WILDMATCH_RECURSION_LIMIT) {
         return WildmatchResult.RecursionLimitReached
@@ -406,7 +432,11 @@ func wildmatchRecursive(
                 return WildmatchResult.AbortAll
             }
         }
-        var tCh = if (ti < tEnd) { text[ti] } else { UInt8(0) }
+        var tCh = if (ti < tEnd) {
+            text[ti]
+        } else {
+            UInt8(0)
+        }
         if (mode.contains(WildmatchMode.IGNORE_CASE) && tCh >= UInt8(65) && tCh <= UInt8(90)) {
             tCh = tCh + UInt8(32)
         }
@@ -452,10 +482,8 @@ func wildmatchRecursive(
                 }
                 if (!mode.contains(WildmatchMode.NO_MATCH_SLASH_LITERAL)) {
                     matchSlash = true
-                } else if (
-                    (isAtStart || hasLeadingSlash)
-                    && (nextCh == UInt8(47) || (nextCh == UInt8(92) && pi + 1 < pEnd && pattern[pi + 1] == UInt8(47)))
-                ) {
+                } else if ((isAtStart || hasLeadingSlash)
+                    && (nextCh == UInt8(47) || (nextCh == UInt8(92) && pi + 1 < pEnd && pattern[pi + 1] == UInt8(47)))) {
                     if (nextCh == UInt8(47)) {
                         pi += 1
                     } else {
@@ -508,14 +536,18 @@ func wildmatchRecursive(
                     ti += 1
                 }
                 if (!found) {
-                    return if (matchSlash) { WildmatchResult.AbortAll } else { WildmatchResult.AbortToStarStar }
+                    return if (matchSlash) {
+                        WildmatchResult.AbortAll
+                    } else {
+                        WildmatchResult.AbortToStarStar
+                    }
                 }
             }
             while (true) {
                 let res = wildmatchRecursive(pattern, pi, pEnd, text, ti, tEnd, mode, depth + 1)
                 if (res != WildmatchResult.NoMatch) {
                     if (matchSlash && res == WildmatchResult.AbortToStarStar) {
-                        // continue searching
+                    // continue searching
                     } else {
                         return res
                     }
@@ -659,7 +691,8 @@ func matchCharClass(className: String, ch: UInt8): Bool {
     } else if (className == "upper") {
         return ch >= UInt8(65) && ch <= UInt8(90)
     } else if (className == "xdigit") {
-        return (ch >= UInt8(48) && ch <= UInt8(57)) || (ch >= UInt8(65) && ch <= UInt8(70)) || (ch >= UInt8(97) && ch <= UInt8(102))
+        return (ch >= UInt8(48) && ch <= UInt8(57)) || (ch >= UInt8(65) && ch <= UInt8(70)) || (ch >= UInt8(97) && ch <=
+            UInt8(102))
     }
     false
 }
@@ -673,7 +706,8 @@ func isAsciiAlpha(ch: UInt8): Bool {
 }
 
 func isAsciiPunct(ch: UInt8): Bool {
-    (ch >= UInt8(33) && ch <= UInt8(47)) || (ch >= UInt8(58) && ch <= UInt8(64)) || (ch >= UInt8(91) && ch <= UInt8(96)) || (ch >= UInt8(123) && ch <= UInt8(126))
+    (ch >= UInt8(33) && ch <= UInt8(47)) || (ch >= UInt8(58) && ch <= UInt8(64)) || (ch >= UInt8(91) && ch <= UInt8(96)) ||
+        (ch >= UInt8(123) && ch <= UInt8(126))
 }
 
 func findByte(text: String, tStart: Int64, tEnd: Int64, b: UInt8): Option<Int64> {
@@ -709,7 +743,8 @@ func wildmatch(pattern: String, value: String, mode: WildmatchMode): Bool {
 }
 
 // Pattern.matches 快速路径 + wildmatch fallback，对齐 Rust: gix_glob::Pattern::matches
-func patternMatches(patternText: String, mode: PatternMode, firstWildcardPos: Option<Int64>, value: String, wmMode: WildmatchMode): Bool {
+func patternMatches(patternText: String, mode: PatternMode, firstWildcardPos: Option<Int64>, value: String,
+    wmMode: WildmatchMode): Bool {
     match (firstWildcardPos) {
         case Some(pos) =>
             if (mode.contains(PatternMode.ENDS_WITH)
@@ -751,8 +786,12 @@ func equalsIgnoreCase(a: String, b: String): Bool {
     for (i in 0..a.size) {
         var ac = a[i]
         var bc = b[i]
-        if (ac >= UInt8(65) && ac <= UInt8(90)) { ac = ac + UInt8(32) }
-        if (bc >= UInt8(65) && bc <= UInt8(90)) { bc = bc + UInt8(32) }
+        if (ac >= UInt8(65) && ac <= UInt8(90)) {
+            ac = ac + UInt8(32)
+        }
+        if (bc >= UInt8(65) && bc <= UInt8(90)) {
+            bc = bc + UInt8(32)
+        }
         if (ac != bc) {
             return false
         }
@@ -771,7 +810,11 @@ public func matchPattern(pattern: String, path: String): Bool {
         if (!path.startsWith(patternText) && path != patternText) {
             return false
         }
-        return if (mode.contains(PatternMode.NEGATIVE)) { false } else { true }
+        return if (mode.contains(PatternMode.NEGATIVE)) {
+            false
+        } else {
+            true
+        }
     }
     let wmMode = WildmatchMode(WildmatchMode.NO_MATCH_SLASH_LITERAL)
     var matchValue = path
@@ -782,5 +825,9 @@ public func matchPattern(pattern: String, path: String): Bool {
         }
     }
     let result = patternMatches(patternText, mode, firstWildcardPos, matchValue, wmMode)
-    if (mode.contains(PatternMode.NEGATIVE)) { !result } else { result }
+    if (mode.contains(PatternMode.NEGATIVE)) {
+        !result
+    } else {
+        result
+    }
 }

@@ -178,8 +178,9 @@ func testRevWalkNoDuplicateVisits(): Unit {
     let walk = RevWalk(provider)
     let id = ObjectId.null(HashKind.Sha1)
     walk.push(id)
-    walk.next()  // visits id, adds parentId to queue
-    walk.push(parentId)  // parentId is now in queue twice
+    walk.next() // visits id, adds parentId to queue
+    walk.push(parentId) // parentId is now in queue twice
+
     // 第一次 next 返回 parentId（从 provider 添加的）
     let r1 = walk.next()
     if (r1.isNone()) {
