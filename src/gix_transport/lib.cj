@@ -15,6 +15,8 @@ import gitoxide.gix_packetline.*
 import gitoxide.gix_utils.*
 import std.collection.*
 import std.net.*
+import stdx.net.tls.*
+import stdx.net.tls.common.*
 
 // Git 协议版本，对齐 Rust gix_transport::Protocol
 public enum ProtocolVersion {
@@ -71,6 +73,10 @@ public interface ClientTransport {
 
     // 执行抓取操作，发送 want/have 协商后获取包数据
     func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult
+
+    // 执行推送操作，发送引用更新和 pack 数据到远程仓库
+    // 对齐 Rust: gix_transport::client::blocking_io::Transport push (git-receive-pack)
+    func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult
 }
 
 // 握手结果，对齐 Rust gix_transport::client::blocking_io::SetServiceResponse
@@ -155,6 +161,60 @@ public class FetchResult {
     public init(packData: Array<Byte>, receivedRefs: ArrayList<Ref>) {
         this.packData = packData
         this.receivedRefs = receivedRefs
+    }
+}
+
+// 推送引用更新命令，对齐 Rust: gix-protocol/src/command.rs
+// 格式: <old-oid> <new-oid> <ref-name>\n 或 <old-oid> <new-oid> <ref-name>\0<capabilities>
+public class RefUpdateCommand {
+    // 引用名称，如 "refs/heads/main"
+    public var refName: String
+    // 旧的对象 ID（全零表示创建新引用）
+    public var oldId: ObjectId
+    // 新的对象 ID（全零表示删除引用）
+    public var newId: ObjectId
+
+    public init(refName: String, oldId: ObjectId, newId: ObjectId) {
+        this.refName = refName
+        this.oldId = oldId
+        this.newId = newId
+    }
+
+    // 编码为 git-receive-pack 协议行
+    // 对齐 Rust: gix-protocol command line encoding
+    public func encode(): Array<Byte> {
+        let line = oldId.toHexString() + " " + newId.toHexString() + " " + refName + "\n"
+        line.toArray()
+    }
+}
+
+// 推送结果，对齐 Rust: git-receive-pack 响应
+public class PushResult {
+    // 每个引用更新的服务器响应
+    public var refUpdates: ArrayList<PushRefUpdateStatus>
+    // 服务器错误消息（如有）
+    public var errorMessage: ?String
+
+    public init(refUpdates: ArrayList<PushRefUpdateStatus>, errorMessage: ?String) {
+        this.refUpdates = refUpdates
+        this.errorMessage = errorMessage
+    }
+}
+
+// 推送引用更新状态，对齐 Rust: git-receive-pack 报告行
+// 格式: <status> <ref-name> [<message>]
+public class PushRefUpdateStatus {
+    // 引用名称
+    public var refName: String
+    // 更新状态：ok / failed
+    public var status: String
+    // 服务器返回的详细消息
+    public var message: ?String
+
+    public init(refName: String, status: String, message: ?String) {
+        this.refName = refName
+        this.status = status
+        this.message = message
     }
 }
 
@@ -332,6 +392,8 @@ public class HttpTransport <: ClientTransport {
     public var lastHost: String
     public var lastPort: Int64
     public var lastPath: String
+    // Basic Auth 认证头，格式 "Basic base64(user:pass)"
+    public var authHeader: ?String
 
     public init() {
         connectTimeout = 30000
@@ -339,6 +401,7 @@ public class HttpTransport <: ClientTransport {
         lastHost = ""
         lastPort = 80
         lastPath = ""
+        authHeader = None
     }
 
     public func handshake(url: Url, service: Service): ?HandshakeResult {
@@ -413,16 +476,79 @@ public class HttpTransport <: ClientTransport {
         None
     }
 
+    // 执行推送操作，通过 Smart HTTP 协议发送 git-receive-pack 请求
+    // 对齐 Rust: gix_transport::client::blocking_io::http push
+    // 流程: 1. 握手(info/refs?service=git-receive-pack)
+    //       2. POST git-receive-pack，发送引用更新命令 + pack 数据
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
+        if (lastHost.isEmpty()) {
+            return None
+        }
+        var service = Service.gitReceivePack()
+        var postPath = lastPath
+        if (!postPath.endsWith("/")) {
+            postPath = postPath + "/"
+        }
+        postPath = postPath + service.name
+
+        var body = ArrayList<Byte>()
+
+        // 发送引用更新命令行
+        // 对齐 Rust: gix-protocol push request encoding
+        // 第一行带能力声明（\0分隔）
+        var isFirst = true
+        for (cmd in refUpdates) {
+            if (isFirst) {
+                // 第一行: <old> <new> <ref>\0<capabilities>\n
+                var firstLine = cmd.oldId.toHexString() + " " + cmd.newId.toHexString() + " " + cmd.refName
+                var firstLineBytes = firstLine.toArray()
+                for (b in firstLineBytes) {
+                    body.add(b)
+                }
+                body.add(UInt8(0))
+                var capsStr = "report-status side-band-6k agent=git/gix-cj/1.0"
+                for (b in capsStr.toArray()) {
+                    body.add(b)
+                }
+                body.add(UInt8(10))
+                isFirst = false
+            } else {
+                // 后续行: <old> <new> <ref>\n
+                for (b in cmd.encode()) {
+                    body.add(b)
+                }
+            }
+        }
+
+        // flush 分隔引用更新和 pack 数据
+        for (b in PacketLine.flush()) {
+            body.add(b)
+        }
+
+        // 发送 pack 数据
+        for (b in packData) {
+            body.add(b)
+        }
+
+        var response = httpPost(lastHost, lastPort, postPath, body.toArray(), "application/x-git-receive-pack-request")
+        if (let Some(resp) <- response) {
+            return parsePushResponse(resp)
+        }
+        None
+    }
+
     // 发送 HTTP GET 请求
     func httpGet(host: String, port: Int64, path: String): ?Array<Byte> {
         try {
             var socket = TcpSocket(host, UInt16(port))
             socket.connect()
-            // 对齐 HTTP/1.1 规范：请求头行必须以 \r\n 结尾
             var request = "GET " + path + " HTTP/1.1\r\n"
             request = request + "Host: " + host + "\r\n"
             request = request + "User-Agent: git/gix-cj/1.0\r\n"
             request = request + "Accept: */*\r\n"
+            if (let Some(auth) <- authHeader) {
+                request = request + "Authorization: " + auth + "\r\n"
+            }
             request = request + "Connection: close\r\n"
             request = request + "\r\n"
             socket.write(request.toArray())
@@ -443,6 +569,9 @@ public class HttpTransport <: ClientTransport {
             request = request + "Host: " + host + "\r\n"
             request = request + "User-Agent: git/gix-cj/1.0\r\n"
             request = request + "Accept: */*\r\n"
+            if (let Some(auth) <- authHeader) {
+                request = request + "Authorization: " + auth + "\r\n"
+            }
             request = request + "Content-Type: " + contentType + "\r\n"
             request = request + "Content-Length: " + body.size.toString() + "\r\n"
             request = request + "Connection: close\r\n"
@@ -682,12 +811,577 @@ public class HttpTransport <: ClientTransport {
         Some(FetchResult(packData, ArrayList<Ref>()))
     }
 
+    // 解析 push 响应，对齐 Rust: git-receive-pack response parsing
+    // 响应格式: pkt-line 编码的状态行，如 "ok <ref>\n" 或 "ng <ref> <msg>\n"
+    func parsePushResponse(body: Array<Byte>): ?PushResult {
+        var refUpdates = ArrayList<PushRefUpdateStatus>()
+        var errorMessage: ?String = None
+        var pos: Int64 = 0
+
+        // 跳过可能的 side-band 前缀字节
+        // 对齐 Rust: gix-protocol side-band-6k 解码
+        while (pos < body.size) {
+            // 检查 flush
+            if (pos + 4 <= body.size) {
+                var hexStr = readHex4(body, pos)
+                if (hexStr == "0000") {
+                    pos += 4
+                    continue
+                }
+            }
+
+            var lineResult = decodePktLine(body, pos)
+            if (lineResult.isNone()) {
+                break
+            }
+            if (let Some(lr) <- lineResult) {
+                pos = lr[1]
+                var lineStr = String.fromUtf8(lr[0])
+                if (lineStr.size > 0 && lineStr[lineStr.size - 1] == UInt8(10)) {
+                    lineStr = lineStr[0..lineStr.size - 1]
+                }
+                if (lineStr.isEmpty()) {
+                    continue
+                }
+
+                // 解析 side-band 数据
+                // 对齐 Rust: side-band-6k 编码：首字节为通道号 (1=data, 2=progress, 3=error)
+                if (lineStr.size > 1) {
+                    var channel = Int64(lineStr[0])
+                    var payload = lineStr[1..]
+                    if (channel == 3) {
+                        // error channel
+                        errorMessage = Some(payload)
+                        continue
+                    }
+                    if (channel == 2) {
+                        // progress channel, skip
+                        continue
+                    }
+                    if (channel == 1) {
+                        // data channel
+                        lineStr = payload
+                    }
+                }
+
+                // 解析状态行
+                if (lineStr.startsWith("ok ")) {
+                    var refName = lineStr[3..]
+                    refUpdates.add(PushRefUpdateStatus(refName, "ok", None))
+                } else if (lineStr.startsWith("ng ")) {
+                    var rest = lineStr[3..]
+                    var spaceIdx = rest.indexOf(" ")
+                    if (let Some(si) <- spaceIdx) {
+                        var refName = rest[0..si]
+                        var msg = rest[si + 1..]
+                        refUpdates.add(PushRefUpdateStatus(refName, "failed", Some(msg)))
+                    } else {
+                        refUpdates.add(PushRefUpdateStatus(rest, "failed", None))
+                    }
+                } else if (lineStr.startsWith("unpack ok")) {
+                    // unpack 成功
+                } else if (lineStr.startsWith("unpack ")) {
+                    errorMessage = Some(lineStr)
+                }
+            } else {
+                break
+            }
+        }
+
+        Some(PushResult(refUpdates, errorMessage))
+    }
+
     // 查找 PACK 签名
     func findPackSignature(data: Array<Byte>): Int64 {
         if (data.size < 4) {
             return -1
         }
         // PACK = 80(P) 65(A) 67(C) 75(K)
+        var i: Int64 = 0
+        while (i < data.size - 3) {
+            if (data[i] == UInt8(80) && data[i + 1] == UInt8(65) && data[i + 2] == UInt8(67) && data[i + 3] == UInt8(75)) {
+                return i
+            }
+            i++
+        }
+        -1
+    }
+}
+
+// HTTPS 传输实现，基于仓颉 TcpSocket + stdx.net.tls.TlsSocket
+// 对齐 Rust: gix_transport::client::blocking_io::http (HTTPS 模式)
+public class TlsHttpTransport <: ClientTransport {
+    public var connectTimeout: Int64
+    public var readTimeout: Int64
+    public var lastHost: String
+    public var lastPort: Int64
+    public var lastPath: String
+    public var authHeader: ?String
+
+    public init() {
+        connectTimeout = 30000
+        readTimeout = 30000
+        lastHost = ""
+        lastPort = 443
+        lastPath = ""
+        authHeader = None
+    }
+
+    public func handshake(url: Url, service: Service): ?HandshakeResult {
+        var host = ""
+        var port: Int64 = 443
+        if (let Some(h) <- url.host) {
+            host = h
+        }
+        if (let Some(p) <- url.port) {
+            port = p
+        }
+        var path = url.path
+        if (path.isEmpty()) {
+            path = "/"
+        }
+
+        lastHost = host
+        lastPort = port
+        lastPath = path
+
+        var refPath = path
+        if (!refPath.endsWith("/")) {
+            refPath = refPath + "/"
+        }
+        refPath = refPath + "info/refs?service=" + service.name
+
+        var response = tlsGet(host, port, refPath)
+        if (let Some(resp) <- response) {
+            return parseHandshakeResponse(resp, service)
+        }
+        None
+    }
+
+    public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
+        if (lastHost.isEmpty()) {
+            return None
+        }
+        var service = Service.gitUploadPack()
+        var postPath = lastPath
+        if (!postPath.endsWith("/")) {
+            postPath = postPath + "/"
+        }
+        postPath = postPath + service.name
+
+        var body = ArrayList<Byte>()
+        for (want in wants) {
+            var wantLine = "want " + want.toHexString() + ""
+            var encoded = PacketLine.encode(wantLine.toArray())
+            for (b in encoded) {
+                body.add(b)
+            }
+        }
+        for (have in haves) {
+            var haveLine = "have " + have.toHexString() + ""
+            var encoded = PacketLine.encode(haveLine.toArray())
+            for (b in encoded) {
+                body.add(b)
+            }
+        }
+        var doneEncoded = PacketLine.encode("done".toArray())
+        for (b in doneEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.flush()) {
+            body.add(b)
+        }
+
+        var response = tlsPost(lastHost, lastPort, postPath, body.toArray(), "application/x-git-upload-pack-request")
+        if (let Some(resp) <- response) {
+            return parseFetchResponse(resp)
+        }
+        None
+    }
+
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
+        if (lastHost.isEmpty()) {
+            return None
+        }
+        var service = Service.gitReceivePack()
+        var postPath = lastPath
+        if (!postPath.endsWith("/")) {
+            postPath = postPath + "/"
+        }
+        postPath = postPath + service.name
+
+        var body = ArrayList<Byte>()
+        var isFirst = true
+        for (cmd in refUpdates) {
+            if (isFirst) {
+                var firstLine = cmd.oldId.toHexString() + " " + cmd.newId.toHexString() + " " + cmd.refName
+                firstLine = firstLine + "\0report-status side-band-6k agent=git/gix-cj/1.0\n"
+                var encoded = PacketLine.encode(firstLine.toArray())
+                for (b in encoded) {
+                    body.add(b)
+                }
+                isFirst = false
+            } else {
+                var line = cmd.oldId.toHexString() + " " + cmd.newId.toHexString() + " " + cmd.refName + "\n"
+                var encoded = PacketLine.encode(line.toArray())
+                for (b in encoded) {
+                    body.add(b)
+                }
+            }
+        }
+        for (b in PacketLine.flush()) {
+            body.add(b)
+        }
+        for (b in packData) {
+            body.add(b)
+        }
+
+        var response = tlsPost(lastHost, lastPort, postPath, body.toArray(), "application/x-git-receive-pack-request")
+        if (let Some(resp) <- response) {
+            return parsePushResponse(resp)
+        }
+        None
+    }
+
+    func tlsGet(host: String, port: Int64, path: String): ?Array<Byte> {
+        try {
+            var tcpSocket = TcpSocket(host, UInt16(port))
+            tcpSocket.connect()
+            var config = TlsClientConfig()
+            config.verifyMode = CertificateVerifyMode.TrustAll
+            config.serverName = Some(host)
+            var tls = TlsSocket.client(tcpSocket, clientConfig: config)
+            tls.handshake()
+            var request = "GET " + path + " HTTP/1.1\r\n"
+            request = request + "Host: " + host + "\r\n"
+            request = request + "User-Agent: git/gix-cj/1.0\r\n"
+            request = request + "Accept: */*\r\n"
+            if (let Some(auth) <- authHeader) {
+                request = request + "Authorization: " + auth + "\r\n"
+            }
+            request = request + "Connection: close\r\n"
+            request = request + "\r\n"
+            tls.write(request.toArray())
+            var result = readAllFromTls(tls)
+            tls.close()
+            extractHttpBody(result)
+        } catch (_: Exception) {
+            None
+        }
+    }
+
+    func tlsPost(host: String, port: Int64, path: String, body: Array<Byte>, contentType: String): ?Array<Byte> {
+        try {
+            var tcpSocket = TcpSocket(host, UInt16(port))
+            tcpSocket.connect()
+            var config = TlsClientConfig()
+            config.verifyMode = CertificateVerifyMode.TrustAll
+            config.serverName = Some(host)
+            var tls = TlsSocket.client(tcpSocket, clientConfig: config)
+            tls.handshake()
+            var request = "POST " + path + " HTTP/1.1\r\n"
+            request = request + "Host: " + host + "\r\n"
+            request = request + "User-Agent: git/gix-cj/1.0\r\n"
+            request = request + "Accept: */*\r\n"
+            if (let Some(auth) <- authHeader) {
+                request = request + "Authorization: " + auth + "\r\n"
+            }
+            request = request + "Content-Type: " + contentType + "\r\n"
+            request = request + "Content-Length: " + body.size.toString() + "\r\n"
+            request = request + "Connection: close\r\n"
+            request = request + "\r\n"
+            tls.write(request.toArray())
+            tls.write(body)
+            var result = readAllFromTls(tls)
+            tls.close()
+            extractHttpBody(result)
+        } catch (_: Exception) {
+            None
+        }
+    }
+
+    func readAllFromTls(tls: TlsSocket): ArrayList<Byte> {
+        var result = ArrayList<Byte>()
+        var buf = Array<Byte>(4096, repeat: 0)
+        var done = false
+        var totalRead: Int64 = 0
+        let maxRead: Int64 = 10 * 1024 * 1024
+        while (!done) {
+            var count = tls.read(buf)
+            if (count <= 0) {
+                done = true
+            } else {
+                var i: Int64 = 0
+                while (i < count) {
+                    result.add(buf[i])
+                    i++
+                }
+                totalRead += count
+                if (totalRead >= maxRead) {
+                    done = true
+                }
+            }
+        }
+        result
+    }
+
+    func extractHttpBody(data: ArrayList<Byte>): ?Array<Byte> {
+        var bodyStart = findBodyStart(data)
+        if (bodyStart < 0) {
+            return None
+        }
+        var body = ArrayList<Byte>()
+        var j = bodyStart
+        while (j < data.size) {
+            body.add(data[j])
+            j++
+        }
+        Some(body.toArray())
+    }
+
+    func findBodyStart(data: ArrayList<Byte>): Int64 {
+        var i: Int64 = 0
+        while (i < data.size - 3) {
+            if (data[i] == CHAR_CR && data[i + 1] == CHAR_LF && data[i + 2] == CHAR_CR && data[i + 3] == CHAR_LF) {
+                return i + 4
+            }
+            i++
+        }
+        -1
+    }
+
+    func parseHandshakeResponse(body: Array<Byte>, service: Service): ?HandshakeResult {
+        var pos: Int64 = 0
+        var refs = ArrayList<Ref>()
+        var capabilities = ArrayList<String>()
+        var protocolVersion = ProtocolVersion.V1
+
+        var firstLine = decodePktLine(body, pos)
+        if (firstLine.isNone()) {
+            return None
+        }
+        if (let Some(fl) <- firstLine) {
+            pos = fl[1]
+            var lineStr = String.fromUtf8(fl[0])
+            if (!lineStr.contains("service=")) {
+                var parseResult = parseRefLine(lineStr, true)
+                if (let Some(pr) <- parseResult) {
+                    refs.add(pr[0])
+                    for (cap in pr[1]) {
+                        capabilities.add(cap)
+                    }
+                }
+            }
+        }
+
+        var isFirstRef = refs.size == 0
+        while (pos < body.size) {
+            if (pos + 4 <= body.size) {
+                var hexStr = readHex4(body, pos)
+                if (hexStr == "0000" || hexStr == "0001") {
+                    pos += 4
+                    continue
+                }
+            }
+
+            var lineResult = decodePktLine(body, pos)
+            if (lineResult.isNone()) {
+                break
+            }
+            if (let Some(lr) <- lineResult) {
+                pos = lr[1]
+                var lineStr = String.fromUtf8(lr[0])
+                if (lineStr.endsWith("")) {
+                    lineStr = lineStr[0..lineStr.size - 1]
+                }
+                if (lineStr.isEmpty()) {
+                    continue
+                }
+
+                var parseResult = parseRefLine(lineStr, isFirstRef)
+                if (let Some(pr) <- parseResult) {
+                    refs.add(pr[0])
+                    if (isFirstRef) {
+                        for (cap in pr[1]) {
+                            capabilities.add(cap)
+                        }
+                        isFirstRef = false
+                    }
+                }
+            } else {
+                break
+            }
+        }
+
+        for (cap in capabilities) {
+            if (cap.startsWith("version=")) {
+                protocolVersion = ProtocolVersion.V2
+            }
+        }
+
+        Some(HandshakeResult(refs, protocolVersion, capabilities))
+    }
+
+    func decodePktLine(data: Array<Byte>, pos: Int64): ?(Array<Byte>, Int64) {
+        if (pos + 4 > data.size) {
+            return None
+        }
+        var hexStr = readHex4(data, pos)
+        var lenOpt = parseHexInt64(hexStr)
+        if (let Some(len) <- lenOpt) {
+            if (len < 4) {
+                return None
+            }
+            if (pos + len > data.size) {
+                return None
+            }
+            Some((sliceBytes(data, pos + 4, len - 4), pos + len))
+        } else {
+            None
+        }
+    }
+
+    func parseRefLine(line: String, withCapabilities: Bool): ?(Ref, ArrayList<String>) {
+        var caps = ArrayList<String>()
+        var capStr = ""
+        var workingLine = line
+
+        var nullIdx = findNullByte(workingLine)
+        if (nullIdx >= 0 && withCapabilities) {
+            capStr = workingLine[nullIdx + 1..]
+            workingLine = workingLine[0..nullIdx]
+        } else if (nullIdx >= 0) {
+            workingLine = workingLine[0..nullIdx]
+        }
+
+        var spaceIdxOpt = workingLine.indexOf(" ")
+        if (let Some(spaceIdx) <- spaceIdxOpt) {
+            var hashStr = workingLine[0..spaceIdx]
+            var refName = workingLine[spaceIdx + 1..]
+
+            var tabIdxOpt = refName.indexOf("\t")
+            if (let Some(tabIdx) <- tabIdxOpt) {
+                refName = refName[0..tabIdx]
+            }
+            var spaceInRefOpt = refName.indexOf(" ")
+            if (let Some(spaceInRef) <- spaceInRefOpt) {
+                refName = refName[0..spaceInRef]
+            }
+
+            if (!capStr.isEmpty()) {
+                var capParts = capStr.split(" ")
+                for (part in capParts) {
+                    if (!part.isEmpty()) {
+                        caps.add(part)
+                    }
+                }
+            }
+
+            var oid = ObjectId.fromHexOrThrow(hashStr)
+            if (refName.endsWith("^{}")) {
+                let actualName = refName[0..refName.size - 3]
+                Some((Ref.Peeled(actualName, oid, oid), caps))
+            } else {
+                Some((Ref.Direct(refName, oid), caps))
+            }
+        } else {
+            None
+        }
+    }
+
+    func findNullByte(s: String): Int64 {
+        var i: Int64 = 0
+        while (i < s.size) {
+            if (s[i] == CHAR_NULL) {
+                return i
+            }
+            i++
+        }
+        -1
+    }
+
+    func parseFetchResponse(body: Array<Byte>): ?FetchResult {
+        var packStart = findPackSignature(body)
+        if (packStart < 0) {
+            return Some(FetchResult(Array<Byte>(), ArrayList<Ref>()))
+        }
+        var packData = sliceBytes(body, packStart, body.size - packStart)
+        Some(FetchResult(packData, ArrayList<Ref>()))
+    }
+
+    func parsePushResponse(body: Array<Byte>): ?PushResult {
+        var refUpdates = ArrayList<PushRefUpdateStatus>()
+        var errorMessage: ?String = None
+        var pos: Int64 = 0
+
+        while (pos < body.size) {
+            if (pos + 4 <= body.size) {
+                var hexStr = readHex4(body, pos)
+                if (hexStr == "0000") {
+                    pos += 4
+                    continue
+                }
+            }
+
+            var lineResult = decodePktLine(body, pos)
+            if (lineResult.isNone()) {
+                break
+            }
+            if (let Some(lr) <- lineResult) {
+                pos = lr[1]
+                var lineStr = String.fromUtf8(lr[0])
+                if (lineStr.size > 0 && lineStr[lineStr.size - 1] == UInt8(10)) {
+                    lineStr = lineStr[0..lineStr.size - 1]
+                }
+                if (lineStr.isEmpty()) {
+                    continue
+                }
+
+                if (lineStr.size > 1) {
+                    var channel = Int64(lineStr[0])
+                    var payload = lineStr[1..]
+                    if (channel == 3) {
+                        errorMessage = Some(payload)
+                        continue
+                    }
+                    if (channel == 2) {
+                        continue
+                    }
+                    if (channel == 1) {
+                        lineStr = payload
+                    }
+                }
+
+                if (lineStr.startsWith("ok ")) {
+                    var refName = lineStr[3..]
+                    refUpdates.add(PushRefUpdateStatus(refName, "ok", None))
+                } else if (lineStr.startsWith("ng ")) {
+                    var rest = lineStr[3..]
+                    var spaceIdx = rest.indexOf(" ")
+                    if (let Some(si) <- spaceIdx) {
+                        var refName = rest[0..si]
+                        var msg = rest[si + 1..]
+                        refUpdates.add(PushRefUpdateStatus(refName, "failed", Some(msg)))
+                    } else {
+                        refUpdates.add(PushRefUpdateStatus(rest, "failed", None))
+                    }
+                } else if (lineStr.startsWith("unpack ok")) {
+                    // unpack ok
+                } else if (lineStr.startsWith("unpack ")) {
+                    errorMessage = Some(lineStr)
+                }
+            } else {
+                break
+            }
+        }
+
+        Some(PushResult(refUpdates, errorMessage))
+    }
+
+    func findPackSignature(data: Array<Byte>): Int64 {
+        if (data.size < 4) {
+            return -1
+        }
         var i: Int64 = 0
         while (i < data.size - 3) {
             if (data[i] == UInt8(80) && data[i + 1] == UInt8(65) && data[i + 2] == UInt8(67) && data[i + 3] == UInt8(75)) {
@@ -813,6 +1507,7 @@ func extractTrailingNumber(s: String): ?String {
 public enum Command {
     | LsRefs // 列出引用
     | Fetch  // 抓取包
+    | Push   // 推送包
 }
 
 // 写入模式，对齐 Rust gix_transport::client::WriteMode
@@ -856,6 +1551,10 @@ public class ReusableHttpTransport <: ClientTransport {
 
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
         inner.fetch(wants, haves)
+    }
+
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
+        inner.push(refUpdates, packData)
     }
 }
 
@@ -924,5 +1623,6 @@ func commandAsStr(cmd: Command): String {
     match (cmd) {
         case Command.LsRefs => "ls-refs"
         case Command.Fetch => "fetch"
+        case Command.Push => "push"
     }
 }

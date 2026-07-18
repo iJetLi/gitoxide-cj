@@ -546,5 +546,65 @@ public func commandAsStr(cmd: Command): String {
     match (cmd) {
         case Command.LsRefs => "ls-refs"
         case Command.Fetch => "fetch"
+        case Command.Push => "push"
+    }
+}
+
+// 推送连接，封装传输层与远程 URL，提供高层推送操作
+// 对齐 Rust: gix-protocol push 模块的高层抽象
+public class PushConnection {
+    // 底层传输实现
+    public var transport: ClientTransport
+    // 远程仓库 URL
+    public var remoteUrl: Url
+
+    // 参数 transport: 传输层实现
+    // 参数 remoteUrl: 远程仓库 URL
+    public init(transport: ClientTransport, remoteUrl: Url) {
+        this.transport = transport
+        this.remoteUrl = remoteUrl
+    }
+
+    // 与远程仓库握手，获取远程引用列表
+    // 对齐 Rust: git-receive-pack 握手
+    public func handshake(): ?HandshakeResult {
+        transport.handshake(remoteUrl, Service.gitReceivePack())
+    }
+
+    // 执行推送操作，发送引用更新和 pack 数据
+    // 参数 refUpdates: 引用更新命令列表
+    // 参数 packData: pack 文件数据
+    // 返回值: 推送成功返回 PushResult，失败返回 None
+    public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
+        transport.push(refUpdates, packData)
+    }
+}
+
+// 推送引用映射，对齐 Rust gix_protocol::push::RefMap
+public class PushRefMap {
+    // 本地引用到远程引用的映射
+    public var mappings: ArrayList<PushMapping>
+    // 远程引用列表
+    public var remoteRefs: ArrayList<Ref>
+    // 对象哈希类型
+    public var objectHash: HashKind
+
+    public init() {
+        mappings = ArrayList<PushMapping>()
+        remoteRefs = ArrayList<Ref>()
+        objectHash = HashKind.Sha1
+    }
+}
+
+// 推送映射项，对齐 Rust gix_protocol::push::Mapping
+public class PushMapping {
+    // 本地引用
+    public var local: Ref
+    // 远程引用名（可能为 None）
+    public var remote: ?String
+
+    public init(local: Ref, remote: ?String) {
+        this.local = local
+        this.remote = remote
     }
 }
