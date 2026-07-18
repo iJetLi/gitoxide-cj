@@ -56,6 +56,17 @@ class RepoResolver <: ResolveRef {
                 case Target.Symbolic(n) => resolveSymbolicRef(n)
             }
         } else {
+            let prefixes = ["refs/heads/", "refs/tags/", "refs/remotes/"]
+            for (prefix in prefixes) {
+                let expanded = prefix + name
+                let expandedRef = repo.findReference(expanded)
+                if (let Some(r) <- expandedRef) {
+                    match (r.target) {
+                        case Target.Object(id) => return Some(id)
+                        case Target.Symbolic(n) => return resolveSymbolicRef(n)
+                    }
+                }
+            }
             None
         }
     }
