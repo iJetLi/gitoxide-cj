@@ -78,8 +78,11 @@ public class Repository {
             path + "/.git"
         }
         try {
+            if (!exists(path)) {
+                Directory.create(path, recursive: true)
+            }
             if (!exists(gitDir)) {
-                Directory.create(gitDir)
+                Directory.create(gitDir, recursive: true)
                 Directory.create(gitDir + "/objects")
                 Directory.create(gitDir + "/objects/pack")
                 Directory.create(gitDir + "/objects/info")
@@ -111,7 +114,8 @@ public class Repository {
                 Some(path)
             }
             Some(Repository(gitDir, workDir, HashKind.Sha1))
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            println("[init] Exception: ${e.message}")
             None
         }
     }

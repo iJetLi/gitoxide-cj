@@ -10,6 +10,7 @@ import std.unittest.*
 import std.collection.*
 import gitoxide.gix_utils.*
 import gitoxide.gix_revwalk.*
+import gitoxide.gix_odb.store.*
 
 // ============================================================
 // 辅助函数
@@ -65,6 +66,10 @@ class TestResolver <: ResolveRef {
     }
 
     public func resolveNthPrior(refName: String, n: Int64): ?ObjectId {
+        None
+    }
+
+    public func resolvePrefix(prefix: Prefix): ?PrefixLookupOutcome {
         None
     }
 }

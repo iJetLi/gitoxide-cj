@@ -906,6 +906,25 @@ public class DataFile {
         Some(DecodeEntryOutcome(kind.getOrThrow(), 0, entry.decompressedSize, dr.compressedSize, entry.decompressedSize))
     }
 
+    public func decodeEntryData(entry: Entry, resolve: (ObjectId) -> ?ResolvedBase): ?(ObjectKind, Array<Byte>) {
+        if (entry.header.isDelta()) {
+            return resolveDeltasData(entry, resolve)
+        }
+        let decompressed = decompressEntry(entry)
+        if (decompressed.isNone()) {
+            return None
+        }
+        let dr = decompressed.getOrThrow()
+        let kind = entry.header.asKind()
+        if (kind.isNone()) {
+            return None
+        }
+        if (dr.data.size != entry.decompressedSize) {
+            return None
+        }
+        Some((kind.getOrThrow(), dr.data))
+    }
+
     // 解析 delta 链
     // 对齐 Rust: resolve_deltas() → Outcome
     func resolveDeltas(entry: Entry, resolve: (ObjectId) -> ?ResolvedBase): ?DecodeEntryOutcome {
@@ -1009,6 +1028,96 @@ public class DataFile {
         Some(
             DecodeEntryOutcome(baseObjectKind.getOrThrow(), Int64(chain.size), totalDecompressedSize, consumedInput,
                 Int64(result.size)))
+    }
+
+    func resolveDeltasData(entry: Entry, resolve: (ObjectId) -> ?ResolvedBase): ?(ObjectKind, Array<Byte>) {
+        var chain = ArrayList<Entry>()
+        var cursor = entry
+        var baseObjectKind: ?ObjectKind = None
+
+        var loopCount: Int64 = 0
+        while (loopCount < 100000) {
+            loopCount += 1
+            if (!cursor.header.isDelta()) {
+                break
+            }
+            chain.add(cursor)
+            let isOfsDelta = match (cursor.header) {
+                case EntryHeader.OfsDelta(_) => true
+                case _ => false
+            }
+            if (isOfsDelta) {
+                let baseDistance = cursor.header.getOfsDeltaDistance()
+                let baseOffset = EntryHeader.verifiedBasePackOffset(cursor.packOffset(), baseDistance)
+                if (baseOffset.isNone()) {
+                    return None
+                }
+                let nextEntry = this.entry(baseOffset.getOrThrow())
+                if (nextEntry.isErr()) {
+                    return None
+                }
+                cursor = nextEntry.unwrap()
+            } else {
+                let baseId = cursor.header.getRefDeltaId()
+                if (baseId.isNone()) {
+                    return None
+                }
+                let resolved = resolve(baseId.getOrThrow())
+                if (resolved.isNone()) {
+                    return None
+                }
+                let rb = resolved.getOrThrow()
+                if (rb.isInPack()) {
+                    cursor = rb.getInPackEntry()
+                } else {
+                    baseObjectKind = Some(rb.getOutOfPackKind())
+                    break
+                }
+            }
+        }
+
+        var result: Array<Byte>
+        if (baseObjectKind.isSome()) {
+            return None
+        } else {
+            let kind = cursor.header.asKind()
+            if (kind.isNone()) {
+                return None
+            }
+            baseObjectKind = kind
+            let baseDecompressed = decompressEntry(cursor)
+            if (baseDecompressed.isNone()) {
+                return None
+            }
+            let dr = baseDecompressed.getOrThrow()
+            if (dr.data.size != cursor.decompressedSize) {
+                return None
+            }
+            result = dr.data
+        }
+
+        var i = chain.size - 1
+        while (i >= 0) {
+            let deltaEntry = chain[i]
+            let deltaDecompressed = decompressEntry(deltaEntry)
+            if (deltaDecompressed.isNone()) {
+                return None
+            }
+            let dr = deltaDecompressed.getOrThrow()
+            let deltaData = dr.data
+            let delta = Delta.fromBytes(deltaData)
+            if (delta.isNone()) {
+                return None
+            }
+            let applied = delta.getOrThrow().apply(result)
+            if (applied.isNone()) {
+                return None
+            }
+            result = applied.getOrThrow()
+            i -= 1
+        }
+
+        Some((baseObjectKind.getOrThrow(), result))
     }
 
     // 设置分配限制
@@ -1222,6 +1331,6 @@ func crc32OfPath(path: String): Int64 {
 // 计算字节数组的 CRC32
 // 对齐 Rust: gix_features::hash::crc32()
 // 使用 crc32fast 库
-func crc32OfBytes(data: Array<Byte>): Int64 {
+public func crc32OfBytes(data: Array<Byte>): Int64 {
     Int64(hash(data))
 }

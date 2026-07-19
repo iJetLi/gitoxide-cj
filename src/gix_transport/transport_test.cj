@@ -369,11 +369,8 @@ class DummyTransport <: ClientTransport {
 func testHttpTransportConstruct(): Unit {
     // 对齐 Rust: HttpTransport 构造
     let transport = HttpTransport()
-    if (transport.lastHost != "") {
-        throw Exception("lastHost should be empty")
-    }
-    if (transport.lastPort != 80) {
-        throw Exception("lastPort should be 80")
+    if (transport.lastBaseUrl != "") {
+        throw Exception("lastBaseUrl should be empty")
     }
 }
 
@@ -743,7 +740,7 @@ func testReusableHttpTransportConstruct(): Unit {
     if (!transport.keepAlive) {
         throw Exception("keepAlive should default to true")
     }
-    if (transport.inner.lastHost != "") {
+    if (transport.inner.lastBaseUrl != "") {
         throw Exception("inner transport should be fresh")
     }
 }

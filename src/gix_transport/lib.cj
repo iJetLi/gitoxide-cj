@@ -2,10 +2,9 @@
 // 用途：Git 传输层抽象，定义客户端传输接口与握手/抓取结果类型
 // 所属包：gix.gix_transport
 // 关键类型：ClientTransport, HandshakeResult, FetchResult, Service, Ref, ProtocolVersion
-//           HttpTransport（基于仓颉 TcpSocket 的 HTTP 传输实现）
+//           HttpTransport（基于 stdx.net.http.Client 的 HTTP 传输实现）
 // 对齐 Rust: gix-transport/src/lib.rs, client/mod.rs, client/traits.rs, client/capabilities.rs,
 //           client/blocking_io/http/mod.rs, client/non_io_types.rs
-// 注意：待 stdx_net 包可用后迁移到 stdx.net.http
 
 package gitoxide.gix_transport
 
@@ -14,9 +13,12 @@ import gitoxide.gix_url.*
 import gitoxide.gix_packetline.*
 import gitoxide.gix_utils.*
 import std.collection.*
+import std.io.*
 import std.net.*
 import stdx.net.tls.*
 import stdx.net.tls.common.*
+import stdx.net.http.*
+import stdx.encoding.url.*
 
 // Git 协议版本，对齐 Rust gix_transport::Protocol
 public enum ProtocolVersion {
@@ -377,6 +379,189 @@ public func parseAcknowledgement(line: String): ?Acknowledgement {
     }
 }
 
+func v2ParseCapabilities(data: Array<Byte>): ArrayList<String> {
+    var caps = ArrayList<String>()
+    var pos: Int64 = 0
+    while (pos < data.size - 4) {
+        var lenStr = StringBuilder()
+        var j = pos
+        while (j < pos + 4 && j < data.size) {
+            lenStr.append(Rune(data[j]))
+            j++
+        }
+        var lenOpt = parseHexInt64(lenStr.toString())
+        if (lenOpt.isNone()) { break }
+        var lineLen = lenOpt.getOrThrow()
+        if (lineLen <= 4 || lineLen > data.size - pos) { break }
+        var line = StringBuilder()
+        var k = pos + 4
+        while (k < pos + lineLen && k < data.size) {
+            line.append(Rune(data[k]))
+            k++
+        }
+        var lineStr = line.toString()
+        if (lineStr.startsWith("agent=") || lineStr.startsWith("ls-refs=") || lineStr.startsWith("fetch=") || lineStr.startsWith("server-option") || lineStr.startsWith("object-format=")) {
+            caps.add(lineStr)
+        }
+        pos += lineLen
+    }
+    caps
+}
+
+func v2ParseLsRefs(data: Array<Byte>, v2Caps: ArrayList<String>): ?HandshakeResult {
+    var refs = ArrayList<Ref>()
+    var capabilities = ArrayList<String>()
+    for (cap in v2Caps) {
+        capabilities.add(cap)
+    }
+    var pos: Int64 = 0
+    while (pos < data.size - 4) {
+        var lenStr = StringBuilder()
+        var j = pos
+        while (j < pos + 4 && j < data.size) {
+            lenStr.append(Rune(data[j]))
+            j++
+        }
+        var lenOpt = parseHexInt64(lenStr.toString())
+        if (lenOpt.isNone()) { break }
+        var lineLen = lenOpt.getOrThrow()
+        if (lineLen <= 4) {
+            if (lineLen == 0) { break }
+            pos += lineLen
+            continue
+        }
+        if (lineLen > data.size - pos) { break }
+        var line = StringBuilder()
+        var k = pos + 4
+        while (k < pos + lineLen && k < data.size) {
+            line.append(Rune(data[k]))
+            k++
+        }
+        var lineStr = line.toString()
+        if (lineStr.endsWith("\n")) {
+            lineStr = lineStr[0..lineStr.size - 1]
+        }
+        var spaceIdx = lineStr.indexOf(" ")
+        if (let Some(si) <- spaceIdx) {
+            var shaStr = lineStr[0..si]
+            var refName = lineStr[si + 1..lineStr.size]
+            var symrefTarget = ""
+            var tabIdx = refName.indexOf("\t")
+            if (let Some(ti) <- tabIdx) {
+                var extra = refName[ti + 1..refName.size]
+                refName = refName[0..ti]
+                var symIdx = extra.indexOf("symref-target:")
+                if (let Some(syi) <- symIdx) {
+                    var targetStart = syi + 14
+                    var targetEnd = extra.size
+                    var nlIdx = extra.indexOf("\n", targetStart)
+                    if (let Some(ni) <- nlIdx) {
+                        targetEnd = ni
+                    }
+                    symrefTarget = extra[targetStart..targetEnd]
+                }
+            }
+            var oid = ObjectId.fromHex(shaStr)
+            if (let Some(id) <- oid) {
+                if (!symrefTarget.isEmpty()) {
+                    refs.add(Ref.Symbolic(refName, symrefTarget, None, id))
+                } else {
+                    refs.add(Ref.Direct(refName, id))
+                }
+            }
+        }
+        pos += lineLen
+    }
+    Some(HandshakeResult(refs, ProtocolVersion.V2, capabilities))
+}
+
+func v2ParseFetchResponse(body: Array<Byte>): ?FetchResult {
+    var packData = ArrayList<Byte>()
+    var pos: Int64 = 0
+    var inPackfile = false
+    while (pos < body.size) {
+        if (pos + 4 > body.size) {
+            break
+        }
+        var hexStr = readHex4(body, pos)
+        if (hexStr == "0000") {
+            pos += 4
+            continue
+        }
+        if (hexStr == "0001") {
+            pos += 4
+            continue
+        }
+        var lineResult = decodePktLineGlobal(body, pos)
+        if (lineResult.isNone()) {
+            break
+        }
+        if (let Some(lr) <- lineResult) {
+            pos = lr[1]
+            var lineData = lr[0]
+            if (lineData.size < 1) {
+                continue
+            }
+            if (lineData.size == 9 && lineData[0] == UInt8(112) && lineData[1] == UInt8(97) && lineData[2] == UInt8(99) && lineData[3] == UInt8(107) && lineData[4] == UInt8(102) && lineData[5] == UInt8(105) && lineData[6] == UInt8(108) && lineData[7] == UInt8(101) && lineData[8] == UInt8(10)) {
+                inPackfile = true
+                continue
+            }
+            if (inPackfile) {
+                var channel = Int64(lineData[0])
+                if (channel == 1) {
+                    for (i in 1..lineData.size) {
+                        packData.add(lineData[i])
+                    }
+                }
+            }
+        }
+    }
+    if (packData.size == 0) {
+        var packStart = findPackSignatureGlobal(body)
+        if (packStart >= 0) {
+            packData = ArrayList<Byte>()
+            var slice = sliceBytes(body, packStart, body.size - packStart)
+            for (b in slice) {
+                packData.add(b)
+            }
+        }
+    }
+    Some(FetchResult(packData.toArray(), ArrayList<Ref>()))
+}
+
+func decodePktLineGlobal(data: Array<Byte>, pos: Int64): ?(Array<Byte>, Int64) {
+    if (pos + 4 > data.size) {
+        return None
+    }
+    var hexStr = readHex4(data, pos)
+    var lenOpt = parseHexInt64(hexStr)
+    if (let Some(len) <- lenOpt) {
+        if (len < 4) {
+            return None
+        }
+        if (pos + len > data.size) {
+            return None
+        }
+        Some((sliceBytes(data, pos + 4, len - 4), pos + len))
+    } else {
+        None
+    }
+}
+
+func findPackSignatureGlobal(data: Array<Byte>): Int64 {
+    if (data.size < 4) {
+        return -1
+    }
+    var i: Int64 = 0
+    while (i < data.size - 3) {
+        if (data[i] == UInt8(80) && data[i + 1] == UInt8(65) && data[i + 2] == UInt8(67) && data[i + 3] == UInt8(75)) {
+            return i
+        }
+        i++
+    }
+    -1
+}
+
 // 解析浅克隆更新行，对齐 Rust shallow_update_from_line
 public func parseShallowUpdate(line: String): ?ShallowUpdate {
     var trimmed = trimStr(line)
@@ -393,17 +578,17 @@ public func parseShallowUpdate(line: String): ?ShallowUpdate {
     }
 }
 
-// HTTP 传输实现，基于仓颉 TcpSocket
+// HTTP 传输实现，基于 stdx.net.http.Client
 // 对齐 Rust: gix_transport::client::blocking_io::http
-// 注意：待 stdx.net.http 可用后迁移
 public class HttpTransport <: ClientTransport {
     public var connectTimeout: Int64
     public var readTimeout: Int64
     public var lastHost: String
     public var lastPort: Int64
     public var lastPath: String
-    // Basic Auth 认证头，格式 "Basic base64(user:pass)"
+    public var lastBaseUrl: String
     public var authHeader: ?String
+    public var httpClient: Client
 
     public init() {
         connectTimeout = 30000
@@ -411,7 +596,9 @@ public class HttpTransport <: ClientTransport {
         lastHost = ""
         lastPort = 80
         lastPath = ""
+        lastBaseUrl = ""
         authHeader = None
+        httpClient = ClientBuilder().cookieJar(CookieJar.createDefaultCookieJar(ArrayList<String>(), true)).build()
     }
 
     public func handshake(url: Url, service: Service): ?HandshakeResult {
@@ -431,6 +618,7 @@ public class HttpTransport <: ClientTransport {
         lastHost = host
         lastPort = port
         lastPath = path
+        lastBaseUrl = "http://" + host + ":" + port.toString() + path
 
         var refPath = path
         if (!refPath.endsWith("/")) {
@@ -438,15 +626,63 @@ public class HttpTransport <: ClientTransport {
         }
         refPath = refPath + "info/refs?service=" + service.name
 
-        var response = httpGet(host, port, refPath)
-        if (let Some(resp) <- response) {
-            return parseHandshakeResponse(resp, service)
+        var fullUrl = "http://" + host + ":" + port.toString() + refPath
+        try {
+            var respBody = httpGet(fullUrl)
+            if (let Some(data) <- respBody) {
+                var v2Caps = parseV2Capabilities(data)
+                var lsRefsResult = lsRefs(host, port, lastPath)
+                if (let Some(refsData) <- lsRefsResult) {
+                    return parseLsRefsResponse(refsData, v2Caps)
+                }
+            }
+            None
+        } catch (e: Exception) {
+            println("[http-handshake] Exception: ${e.message}")
+            None
         }
-        None
+    }
+
+    func lsRefs(host: String, port: Int64, repoPath: String): ?Array<Byte> {
+        var postPath = repoPath
+        if (!postPath.endsWith("/")) {
+            postPath = postPath + "/"
+        }
+        postPath = postPath + "git-upload-pack"
+
+        var body = ArrayList<Byte>()
+        var cmdLine = "command=ls-refs\n"
+        var cmdEncoded = PacketLine.encode(cmdLine.toArray())
+        for (b in cmdEncoded) { body.add(b) }
+        var agentLine = "agent=git/gix-cj/1.0\n"
+        var agentEncoded = PacketLine.encode(agentLine.toArray())
+        for (b in agentEncoded) { body.add(b) }
+        var objLine = "object-format=sha1\n"
+        var objEncoded = PacketLine.encode(objLine.toArray())
+        for (b in objEncoded) { body.add(b) }
+        for (b in PacketLine.delimiter()) { body.add(b) }
+        var symrefsLine = "symrefs\n"
+        var symrefsEncoded = PacketLine.encode(symrefsLine.toArray())
+        for (b in symrefsEncoded) { body.add(b) }
+        var peelLine = "peel\n"
+        var peelEncoded = PacketLine.encode(peelLine.toArray())
+        for (b in peelEncoded) { body.add(b) }
+        for (b in PacketLine.flush()) { body.add(b) }
+
+        var fullUrl = "http://" + host + ":" + port.toString() + postPath
+        httpPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
+    }
+
+    func parseV2Capabilities(data: Array<Byte>): ArrayList<String> {
+        v2ParseCapabilities(data)
+    }
+
+    func parseLsRefsResponse(data: Array<Byte>, v2Caps: ArrayList<String>): ?HandshakeResult {
+        v2ParseLsRefs(data, v2Caps)
     }
 
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
-        if (lastHost.isEmpty()) {
+        if (lastBaseUrl.isEmpty()) {
             return None
         }
         var service = Service.gitUploadPack()
@@ -457,33 +693,41 @@ public class HttpTransport <: ClientTransport {
         postPath = postPath + service.name
 
         var body = ArrayList<Byte>()
+        var cmdLine = "command=fetch\n"
+        var cmdEncoded = PacketLine.encode(cmdLine.toArray())
+        for (b in cmdEncoded) { body.add(b) }
+        var agentLine = "agent=git/gix-cj/1.0\n"
+        var agentEncoded = PacketLine.encode(agentLine.toArray())
+        for (b in agentEncoded) { body.add(b) }
+        var objLine = "object-format=sha1\n"
+        var objEncoded = PacketLine.encode(objLine.toArray())
+        for (b in objEncoded) { body.add(b) }
+        for (b in PacketLine.delimiter()) { body.add(b) }
         for (want in wants) {
-            var wantLine = "want " + want.toHexString() + ""
+            var wantLine = "want " + want.toHexString() + "\n"
             var encoded = PacketLine.encode(wantLine.toArray())
-            for (b in encoded) {
-                body.add(b)
-            }
+            for (b in encoded) { body.add(b) }
         }
         for (have in haves) {
-            var haveLine = "have " + have.toHexString() + ""
+            var haveLine = "have " + have.toHexString() + "\n"
             var encoded = PacketLine.encode(haveLine.toArray())
-            for (b in encoded) {
-                body.add(b)
-            }
+            for (b in encoded) { body.add(b) }
         }
-        var doneEncoded = PacketLine.encode("done".toArray())
-        for (b in doneEncoded) {
-            body.add(b)
-        }
-        for (b in PacketLine.flush()) {
-            body.add(b)
-        }
+        var doneEncoded = PacketLine.encode("done\n".toArray())
+        for (b in doneEncoded) { body.add(b) }
+        for (b in PacketLine.flush()) { body.add(b) }
 
-        var response = httpPost(lastHost, lastPort, postPath, body.toArray(), "application/x-git-upload-pack-request")
-        if (let Some(resp) <- response) {
-            return parseFetchResponse(resp)
+        var fullUrl = "http://" + lastHost + ":" + lastPort.toString() + postPath
+        try {
+            var respBody = httpPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
+            if (let Some(data) <- respBody) {
+                return parseV2FetchResponse(data)
+            }
+            None
+        } catch (e: Exception) {
+            println("[http-fetch] Exception: ${e.message}")
+            None
         }
-        None
     }
 
     // 执行推送操作，通过 Smart HTTP 协议发送 git-receive-pack 请求
@@ -491,7 +735,7 @@ public class HttpTransport <: ClientTransport {
     // 流程: 1. 握手(info/refs?service=git-receive-pack)
     //       2. POST git-receive-pack，发送引用更新命令 + pack 数据
     public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
-        if (lastHost.isEmpty()) {
+        if (lastBaseUrl.isEmpty()) {
             return None
         }
         var service = Service.gitReceivePack()
@@ -540,72 +784,28 @@ public class HttpTransport <: ClientTransport {
             body.add(b)
         }
 
-        var response = httpPost(lastHost, lastPort, postPath, body.toArray(), "application/x-git-receive-pack-request")
-        if (let Some(resp) <- response) {
-            return parsePushResponse(resp)
-        }
-        None
-    }
-
-    // 发送 HTTP GET 请求
-    func httpGet(host: String, port: Int64, path: String): ?Array<Byte> {
+        var fullUrl = "http://" + lastHost + ":" + lastPort.toString() + postPath
         try {
-            var socket = TcpSocket(host, UInt16(port))
-            socket.connect()
-            var request = "GET " + path + " HTTP/1.1\r\n"
-            request = request + "Host: " + host + "\r\n"
-            request = request + "User-Agent: git/gix-cj/1.0\r\n"
-            request = request + "Accept: */*\r\n"
-            if (let Some(auth) <- authHeader) {
-                request = request + "Authorization: " + auth + "\r\n"
+            var respBody = httpPost(fullUrl, body.toArray(), "application/x-git-receive-pack-request", "application/x-git-receive-pack-result")
+            if (let Some(data) <- respBody) {
+                return parsePushResponse(data)
             }
-            request = request + "Connection: close\r\n"
-            request = request + "\r\n"
-            socket.write(request.toArray())
-            var result = readAllFromSocket(socket)
-            socket.close()
-            extractHttpBody(result)
-        } catch (_: Exception) {
+            None
+        } catch (e: Exception) {
+            println("[http-push] Exception: ${e.message}")
             None
         }
     }
 
-    // 发送 HTTP POST 请求
-    func httpPost(host: String, port: Int64, path: String, body: Array<Byte>, contentType: String): ?Array<Byte> {
-        try {
-            var socket = TcpSocket(host, UInt16(port))
-            socket.connect()
-            var request = "POST " + path + " HTTP/1.1\r\n"
-            request = request + "Host: " + host + "\r\n"
-            request = request + "User-Agent: git/gix-cj/1.0\r\n"
-            request = request + "Accept: */*\r\n"
-            if (let Some(auth) <- authHeader) {
-                request = request + "Authorization: " + auth + "\r\n"
-            }
-            request = request + "Content-Type: " + contentType + "\r\n"
-            request = request + "Content-Length: " + body.size.toString() + "\r\n"
-            request = request + "Connection: close\r\n"
-            request = request + "\r\n"
-            socket.write(request.toArray())
-            socket.write(body)
-            var result = readAllFromSocket(socket)
-            socket.close()
-            extractHttpBody(result)
-        } catch (_: Exception) {
-            None
-        }
-    }
-
-    // 从 socket 读取所有数据
-    func readAllFromSocket(socket: TcpSocket): ArrayList<Byte> {
+    // 从 InputStream 读取所有数据
+    func readAllFromBody(body: InputStream): Array<Byte> {
         var result = ArrayList<Byte>()
         var buf = Array<Byte>(4096, repeat: 0)
         var done = false
-        // 对齐 Rust: 读取超时保护，防止无限阻塞
         var totalRead: Int64 = 0
-        let maxRead: Int64 = 10 * 1024 * 1024 // 10MB 上限
+        let maxRead: Int64 = 10 * 1024 * 1024
         while (!done) {
-            var count = socket.read(buf)
+            var count = body.read(buf)
             if (count <= 0) {
                 done = true
             } else {
@@ -620,35 +820,46 @@ public class HttpTransport <: ClientTransport {
                 }
             }
         }
-        result
+        result.toArray()
     }
 
-    // 提取 HTTP 响应体，使用 CHAR_CR/CHAR_LF 常量
-    func extractHttpBody(data: ArrayList<Byte>): ?Array<Byte> {
-        var bodyStart = findBodyStart(data)
-        if (bodyStart < 0) {
-            return None
-        }
-        var body = ArrayList<Byte>()
-        var j = bodyStart
-        while (j < data.size) {
-            body.add(data[j])
-            j++
-        }
-        Some(body.toArray())
-    }
-
-    // 查找 HTTP 响应体起始位置，使用 CHAR_CR/CHAR_LF 常量
-    func findBodyStart(data: ArrayList<Byte>): Int64 {
-        var i: Int64 = 0
-        while (i < data.size - 3) {
-            if (data[i] == CHAR_CR && data[i + 1] == CHAR_LF && data[i + 2] == CHAR_CR && data[i + 3] == CHAR_LF) {
-                return i + 4
+    func httpGet(url: String): ?Array<Byte> {
+        try {
+            var builder = HttpRequestBuilder().url(url).get()
+            builder = builder.header("User-Agent", "git/2.0")
+            builder = builder.header("Git-Protocol", "version=2")
+            if (let Some(auth) <- authHeader) {
+                builder = builder.header("Authorization", auth)
             }
-            i++
+            var req = builder.build()
+            var resp = httpClient.send(req)
+            readAllFromBody(resp.body)
+        } catch (_: Exception) {
+            None
         }
-        -1
     }
+
+    func httpPost(url: String, body: Array<Byte>, contentType: String, acceptType: String): ?Array<Byte> {
+        try {
+            var bodyArr = Array<UInt8>(body.size, { i => UInt8(body[i]) })
+            var builder = HttpRequestBuilder().url(url).post().header("Content-Type", contentType).header("Accept", acceptType).body(bodyArr)
+            builder = builder.header("User-Agent", "git/2.0")
+            builder = builder.header("Git-Protocol", "version=2")
+            if (let Some(auth) <- authHeader) {
+                builder = builder.header("Authorization", auth)
+            }
+            var req = builder.build()
+            var resp = httpClient.send(req)
+            readAllFromBody(resp.body)
+        } catch (e: Exception) {
+            println("[http-post] Exception: ${e.message}")
+            None
+        }
+    }
+
+
+
+
 
     // 解析 Smart HTTP 握手响应
     func parseHandshakeResponse(body: Array<Byte>, service: Service): ?HandshakeResult {
@@ -832,14 +1043,47 @@ public class HttpTransport <: ClientTransport {
         -1
     }
 
+    func parseV2FetchResponse(body: Array<Byte>): ?FetchResult {
+        v2ParseFetchResponse(body)
+    }
+
     // 解析 fetch 响应
     func parseFetchResponse(body: Array<Byte>): ?FetchResult {
         var packStart = findPackSignature(body)
-        if (packStart < 0) {
-            return Some(FetchResult(Array<Byte>(), ArrayList<Ref>()))
+        if (packStart >= 0) {
+            var packData = sliceBytes(body, packStart, body.size - packStart)
+            return Some(FetchResult(packData, ArrayList<Ref>()))
         }
-        var packData = sliceBytes(body, packStart, body.size - packStart)
-        Some(FetchResult(packData, ArrayList<Ref>()))
+        var packData = ArrayList<Byte>()
+        var pos: Int64 = 0
+        while (pos < body.size) {
+            if (pos + 4 > body.size) {
+                break
+            }
+            var hexStr = readHex4(body, pos)
+            if (hexStr == "0000") {
+                pos += 4
+                continue
+            }
+            var lineResult = decodePktLine(body, pos)
+            if (lineResult.isNone()) {
+                break
+            }
+            if (let Some(lr) <- lineResult) {
+                pos = lr[1]
+                var lineData = lr[0]
+                if (lineData.size < 1) {
+                    continue
+                }
+                var channel = Int64(lineData[0])
+                if (channel == 1) {
+                    for (i in 1..lineData.size) {
+                        packData.add(lineData[i])
+                    }
+                }
+            }
+        }
+        Some(FetchResult(packData.toArray(), ArrayList<Ref>()))
     }
 
     // 解析 push 响应，对齐 Rust: git-receive-pack response parsing
@@ -939,7 +1183,7 @@ public class HttpTransport <: ClientTransport {
     }
 }
 
-// HTTPS 传输实现，基于仓颉 TcpSocket + stdx.net.tls.TlsSocket
+// HTTPS 传输实现，基于 stdx.net.http.Client（HTTPS 模式）
 // 对齐 Rust: gix_transport::client::blocking_io::http (HTTPS 模式)
 public class TlsHttpTransport <: ClientTransport {
     public var connectTimeout: Int64
@@ -947,7 +1191,9 @@ public class TlsHttpTransport <: ClientTransport {
     public var lastHost: String
     public var lastPort: Int64
     public var lastPath: String
+    public var lastBaseUrl: String
     public var authHeader: ?String
+    public var httpClient: Client
 
     public init() {
         connectTimeout = 30000
@@ -955,7 +1201,11 @@ public class TlsHttpTransport <: ClientTransport {
         lastHost = ""
         lastPort = 443
         lastPath = ""
+        lastBaseUrl = ""
         authHeader = None
+        var tlsConfig = TlsClientConfig()
+        tlsConfig.verifyMode = CertificateVerifyMode.TrustAll
+        httpClient = ClientBuilder().tlsConfig(tlsConfig).cookieJar(CookieJar.createDefaultCookieJar(ArrayList<String>(), true)).build()
     }
 
     public func handshake(url: Url, service: Service): ?HandshakeResult {
@@ -975,6 +1225,7 @@ public class TlsHttpTransport <: ClientTransport {
         lastHost = host
         lastPort = port
         lastPath = path
+        lastBaseUrl = "https://" + host + ":" + port.toString() + path
 
         var refPath = path
         if (!refPath.endsWith("/")) {
@@ -982,15 +1233,55 @@ public class TlsHttpTransport <: ClientTransport {
         }
         refPath = refPath + "info/refs?service=" + service.name
 
-        var response = tlsGet(host, port, refPath)
-        if (let Some(resp) <- response) {
-            return parseHandshakeResponse(resp, service)
+        var fullUrl = "https://" + host + ":" + port.toString() + refPath
+        try {
+            var respBody = httpsGet(fullUrl)
+            if (let Some(data) <- respBody) {
+                var v2Caps = v2ParseCapabilities(data)
+                var lsRefsResult = tlsLsRefs(host, port, lastPath)
+                if (let Some(refsData) <- lsRefsResult) {
+                    return v2ParseLsRefs(refsData, v2Caps)
+                }
+            }
+            None
+        } catch (e: Exception) {
+            println("[tls-handshake] Exception: ${e.message}")
+            None
         }
-        None
+    }
+
+    func tlsLsRefs(host: String, port: Int64, repoPath: String): ?Array<Byte> {
+        var postPath = repoPath
+        if (!postPath.endsWith("/")) {
+            postPath = postPath + "/"
+        }
+        postPath = postPath + "git-upload-pack"
+
+        var body = ArrayList<Byte>()
+        var cmdLine = "command=ls-refs\n"
+        var cmdEncoded = PacketLine.encode(cmdLine.toArray())
+        for (b in cmdEncoded) { body.add(b) }
+        var agentLine = "agent=git/gix-cj/1.0\n"
+        var agentEncoded = PacketLine.encode(agentLine.toArray())
+        for (b in agentEncoded) { body.add(b) }
+        var objLine = "object-format=sha1\n"
+        var objEncoded = PacketLine.encode(objLine.toArray())
+        for (b in objEncoded) { body.add(b) }
+        for (b in PacketLine.delimiter()) { body.add(b) }
+        var symrefsLine = "symrefs\n"
+        var symrefsEncoded = PacketLine.encode(symrefsLine.toArray())
+        for (b in symrefsEncoded) { body.add(b) }
+        var peelLine = "peel\n"
+        var peelEncoded = PacketLine.encode(peelLine.toArray())
+        for (b in peelEncoded) { body.add(b) }
+        for (b in PacketLine.flush()) { body.add(b) }
+
+        var fullUrl = "https://" + host + ":" + port.toString() + postPath
+        httpsPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
     }
 
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
-        if (lastHost.isEmpty()) {
+        if (lastBaseUrl.isEmpty()) {
             return None
         }
         var service = Service.gitUploadPack()
@@ -1001,37 +1292,45 @@ public class TlsHttpTransport <: ClientTransport {
         postPath = postPath + service.name
 
         var body = ArrayList<Byte>()
+        var cmdLine = "command=fetch\n"
+        var cmdEncoded = PacketLine.encode(cmdLine.toArray())
+        for (b in cmdEncoded) { body.add(b) }
+        var agentLine = "agent=git/gix-cj/1.0\n"
+        var agentEncoded = PacketLine.encode(agentLine.toArray())
+        for (b in agentEncoded) { body.add(b) }
+        var objLine = "object-format=sha1\n"
+        var objEncoded = PacketLine.encode(objLine.toArray())
+        for (b in objEncoded) { body.add(b) }
+        for (b in PacketLine.delimiter()) { body.add(b) }
         for (want in wants) {
-            var wantLine = "want " + want.toHexString() + ""
+            var wantLine = "want " + want.toHexString() + "\n"
             var encoded = PacketLine.encode(wantLine.toArray())
-            for (b in encoded) {
-                body.add(b)
-            }
+            for (b in encoded) { body.add(b) }
         }
         for (have in haves) {
-            var haveLine = "have " + have.toHexString() + ""
+            var haveLine = "have " + have.toHexString() + "\n"
             var encoded = PacketLine.encode(haveLine.toArray())
-            for (b in encoded) {
-                body.add(b)
-            }
+            for (b in encoded) { body.add(b) }
         }
-        var doneEncoded = PacketLine.encode("done".toArray())
-        for (b in doneEncoded) {
-            body.add(b)
-        }
-        for (b in PacketLine.flush()) {
-            body.add(b)
-        }
+        var doneEncoded = PacketLine.encode("done\n".toArray())
+        for (b in doneEncoded) { body.add(b) }
+        for (b in PacketLine.flush()) { body.add(b) }
 
-        var response = tlsPost(lastHost, lastPort, postPath, body.toArray(), "application/x-git-upload-pack-request")
-        if (let Some(resp) <- response) {
-            return parseFetchResponse(resp)
+        var fullUrl = "https://" + lastHost + ":" + lastPort.toString() + postPath
+        try {
+            var respBody = httpsPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
+            if (let Some(data) <- respBody) {
+                return v2ParseFetchResponse(data)
+            }
+            None
+        } catch (e: Exception) {
+            println("[tls-fetch] Exception: ${e.message}")
+            None
         }
-        None
     }
 
     public func push(refUpdates: ArrayList<RefUpdateCommand>, packData: Array<Byte>): ?PushResult {
-        if (lastHost.isEmpty()) {
+        if (lastBaseUrl.isEmpty()) {
             return None
         }
         var service = Service.gitReceivePack()
@@ -1042,103 +1341,64 @@ public class TlsHttpTransport <: ClientTransport {
         postPath = postPath + service.name
 
         var body = ArrayList<Byte>()
+
+        // 发送引用更新命令行
         var isFirst = true
         for (cmd in refUpdates) {
             if (isFirst) {
+                // 第一行: <old> <new> <ref>\0<capabilities>\n
                 var firstLine = cmd.oldId.toHexString() + " " + cmd.newId.toHexString() + " " + cmd.refName
-                firstLine = firstLine + "\0report-status side-band-6k agent=git/gix-cj/1.0\n"
-                var encoded = PacketLine.encode(firstLine.toArray())
-                for (b in encoded) {
+                var firstLineBytes = firstLine.toArray()
+                for (b in firstLineBytes) {
                     body.add(b)
                 }
+                body.add(UInt8(0))
+                var capsStr = "report-status side-band-6k agent=git/gix-cj/1.0"
+                for (b in capsStr.toArray()) {
+                    body.add(b)
+                }
+                body.add(UInt8(10))
                 isFirst = false
             } else {
-                var line = cmd.oldId.toHexString() + " " + cmd.newId.toHexString() + " " + cmd.refName + "\n"
-                var encoded = PacketLine.encode(line.toArray())
-                for (b in encoded) {
+                // 后续行: <old> <new> <ref>\n
+                for (b in cmd.encode()) {
                     body.add(b)
                 }
             }
         }
+
+        // flush 分隔引用更新和 pack 数据
         for (b in PacketLine.flush()) {
             body.add(b)
         }
+
+        // 发送 pack 数据
         for (b in packData) {
             body.add(b)
         }
 
-        var response = tlsPost(lastHost, lastPort, postPath, body.toArray(), "application/x-git-receive-pack-request")
-        if (let Some(resp) <- response) {
-            return parsePushResponse(resp)
-        }
-        None
-    }
-
-    func tlsGet(host: String, port: Int64, path: String): ?Array<Byte> {
+        var fullUrl = "https://" + lastHost + ":" + lastPort.toString() + postPath
         try {
-            var tcpSocket = TcpSocket(host, UInt16(port))
-            tcpSocket.connect()
-            var config = TlsClientConfig()
-            config.verifyMode = CertificateVerifyMode.TrustAll
-            config.serverName = Some(host)
-            var tls = TlsSocket.client(tcpSocket, clientConfig: config)
-            tls.handshake()
-            var request = "GET " + path + " HTTP/1.1\r\n"
-            request = request + "Host: " + host + "\r\n"
-            request = request + "User-Agent: git/gix-cj/1.0\r\n"
-            request = request + "Accept: */*\r\n"
-            if (let Some(auth) <- authHeader) {
-                request = request + "Authorization: " + auth + "\r\n"
+            var respBody = httpsPost(fullUrl, body.toArray(), "application/x-git-receive-pack-request", "application/x-git-receive-pack-result")
+            if (let Some(data) <- respBody) {
+                return parsePushResponse(data)
             }
-            request = request + "Connection: close\r\n"
-            request = request + "\r\n"
-            tls.write(request.toArray())
-            var result = readAllFromTls(tls)
-            tls.close()
-            extractHttpBody(result)
-        } catch (_: Exception) {
+            None
+        } catch (e: Exception) {
+            println("[tls-push] Exception: ${e.message}")
             None
         }
     }
 
-    func tlsPost(host: String, port: Int64, path: String, body: Array<Byte>, contentType: String): ?Array<Byte> {
-        try {
-            var tcpSocket = TcpSocket(host, UInt16(port))
-            tcpSocket.connect()
-            var config = TlsClientConfig()
-            config.verifyMode = CertificateVerifyMode.TrustAll
-            config.serverName = Some(host)
-            var tls = TlsSocket.client(tcpSocket, clientConfig: config)
-            tls.handshake()
-            var request = "POST " + path + " HTTP/1.1\r\n"
-            request = request + "Host: " + host + "\r\n"
-            request = request + "User-Agent: git/gix-cj/1.0\r\n"
-            request = request + "Accept: */*\r\n"
-            if (let Some(auth) <- authHeader) {
-                request = request + "Authorization: " + auth + "\r\n"
-            }
-            request = request + "Content-Type: " + contentType + "\r\n"
-            request = request + "Content-Length: " + body.size.toString() + "\r\n"
-            request = request + "Connection: close\r\n"
-            request = request + "\r\n"
-            tls.write(request.toArray())
-            tls.write(body)
-            var result = readAllFromTls(tls)
-            tls.close()
-            extractHttpBody(result)
-        } catch (_: Exception) {
-            None
-        }
-    }
-
-    func readAllFromTls(tls: TlsSocket): ArrayList<Byte> {
+    // 从 InputStream 读取所有数据
+    func readAllFromBody(body: InputStream): Array<Byte> {
         var result = ArrayList<Byte>()
         var buf = Array<Byte>(4096, repeat: 0)
         var done = false
         var totalRead: Int64 = 0
         let maxRead: Int64 = 10 * 1024 * 1024
         while (!done) {
-            var count = tls.read(buf)
+            var count = body.read(buf)
             if (count <= 0) {
                 done = true
             } else {
@@ -1153,33 +1413,42 @@ public class TlsHttpTransport <: ClientTransport {
                 }
             }
         }
-        result
+        result.toArray()
     }
-
-    func extractHttpBody(data: ArrayList<Byte>): ?Array<Byte> {
-        var bodyStart = findBodyStart(data)
-        if (bodyStart < 0) {
-            return None
-        }
-        var body = ArrayList<Byte>()
-        var j = bodyStart
-        while (j < data.size) {
-            body.add(data[j])
-            j++
-        }
-        Some(body.toArray())
-    }
-
-    func findBodyStart(data: ArrayList<Byte>): Int64 {
-        var i: Int64 = 0
-        while (i < data.size - 3) {
-            if (data[i] == CHAR_CR && data[i + 1] == CHAR_LF && data[i + 2] == CHAR_CR && data[i + 3] == CHAR_LF) {
-                return i + 4
+    func httpsGet(url: String): ?Array<Byte> {
+        try {
+            var builder = HttpRequestBuilder().url(url).get()
+            builder = builder.header("User-Agent", "git/2.0")
+            builder = builder.header("Git-Protocol", "version=2")
+            if (let Some(auth) <- authHeader) {
+                builder = builder.header("Authorization", auth)
             }
-            i++
+            var req = builder.build()
+            var resp = httpClient.send(req)
+            readAllFromBody(resp.body)
+        } catch (_: Exception) {
+            None
         }
-        -1
     }
+
+    func httpsPost(url: String, body: Array<Byte>, contentType: String, acceptType: String): ?Array<Byte> {
+        try {
+            var bodyArr = Array<UInt8>(body.size, { i => UInt8(body[i]) })
+            var builder = HttpRequestBuilder().url(url).post().header("Content-Type", contentType).header("Accept", acceptType).body(bodyArr)
+            builder = builder.header("User-Agent", "git/2.0")
+            builder = builder.header("Git-Protocol", "version=2")
+            if (let Some(auth) <- authHeader) {
+                builder = builder.header("Authorization", auth)
+            }
+            var req = builder.build()
+            var resp = httpClient.send(req)
+            readAllFromBody(resp.body)
+        } catch (e: Exception) {
+            println("[https-post] Exception: ${e.message}")
+            None
+        }
+    }
+
 
     func parseHandshakeResponse(body: Array<Byte>, service: Service): ?HandshakeResult {
         var pos: Int64 = 0
@@ -1354,11 +1623,40 @@ public class TlsHttpTransport <: ClientTransport {
 
     func parseFetchResponse(body: Array<Byte>): ?FetchResult {
         var packStart = findPackSignature(body)
-        if (packStart < 0) {
-            return Some(FetchResult(Array<Byte>(), ArrayList<Ref>()))
+        if (packStart >= 0) {
+            var packData = sliceBytes(body, packStart, body.size - packStart)
+            return Some(FetchResult(packData, ArrayList<Ref>()))
         }
-        var packData = sliceBytes(body, packStart, body.size - packStart)
-        Some(FetchResult(packData, ArrayList<Ref>()))
+        var packData = ArrayList<Byte>()
+        var pos: Int64 = 0
+        while (pos < body.size) {
+            if (pos + 4 > body.size) {
+                break
+            }
+            var hexStr = readHex4(body, pos)
+            if (hexStr == "0000") {
+                pos += 4
+                continue
+            }
+            var lineResult = decodePktLine(body, pos)
+            if (lineResult.isNone()) {
+                break
+            }
+            if (let Some(lr) <- lineResult) {
+                pos = lr[1]
+                var lineData = lr[0]
+                if (lineData.size < 1) {
+                    continue
+                }
+                var channel = Int64(lineData[0])
+                if (channel == 1) {
+                    for (i in 1..lineData.size) {
+                        packData.add(lineData[i])
+                    }
+                }
+            }
+        }
+        Some(FetchResult(packData.toArray(), ArrayList<Ref>()))
     }
 
     func parsePushResponse(body: Array<Byte>): ?PushResult {

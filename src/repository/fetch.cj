@@ -24,26 +24,30 @@ public class FetchQuery {
     public func fetch(remoteName: String): ?FetchResult {
         let remoteUrl = getRemoteUrl(remoteName)
         if (let Some(urlStr) <- remoteUrl) {
-            let transport = HttpTransport()
-            let service = Service.gitUploadPack()
             let url = Url.parse(urlStr)
             if (let Some(u) <- url) {
-                let handshakeResult = transport.handshake(u, service)
-                if (let Some(result) <- handshakeResult) {
-                    let wants = ArrayList<ObjectId>()
-                    let haves = ArrayList<ObjectId>()
-                    let head = repo.head()
-                    if (let Some(h) <- head) {
-                        if (let Some(id) <- h.tryId()) {
-                            haves.add(id)
+                let transportOpt = createTransport(u, urlStr)
+                if (let Some(transport) <- transportOpt) {
+                    let service = Service.gitUploadPack()
+                    let handshakeResult = transport.handshake(u, service)
+                    if (let Some(result) <- handshakeResult) {
+                        let wants = ArrayList<ObjectId>()
+                        let haves = ArrayList<ObjectId>()
+                        let head = repo.head()
+                        if (let Some(h) <- head) {
+                            if (let Some(id) <- h.tryId()) {
+                                haves.add(id)
+                            }
                         }
-                    }
-                    for (`ref` in result.refs) {
-                        if (let Some(id) <- refObjectId(`ref`)) {
-                            wants.add(id)
+                        for (`ref` in result.refs) {
+                            if (let Some(id) <- refObjectId(`ref`)) {
+                                wants.add(id)
+                            }
                         }
+                        transport.fetch(wants, haves)
+                    } else {
+                        None
                     }
-                    transport.fetch(wants, haves)
                 } else {
                     None
                 }
@@ -53,6 +57,25 @@ public class FetchQuery {
         } else {
             None
         }
+    }
+
+    func createTransport(url: Url, urlStr: String): ?ClientTransport {
+        let authOpt = loadCredentialsForUrl(urlStr)
+        if (url.scheme == Scheme.Http) {
+            let t = HttpTransport()
+            if (let Some(auth) <- authOpt) {
+                t.authHeader = Some("Basic " + auth)
+            }
+            return Some(t)
+        }
+        if (url.scheme == Scheme.Https) {
+            let t = TlsHttpTransport()
+            if (let Some(auth) <- authOpt) {
+                t.authHeader = Some("Basic " + auth)
+            }
+            return Some(t)
+        }
+        None
     }
 
     // 获取远程引用列表
