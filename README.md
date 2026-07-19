@@ -4,6 +4,8 @@ A native Git library implemented in [Cangjie (仓颉)](https://cangjie-lang.cn/)
 
 gitoxide-cj provides a complete set of Git plumbing packages for building Git-compatible applications in Cangjie, covering object storage, reference management, protocol communication, index operations, and more.
 
+Video: [Bilibili](https://www.bilibili.com/video/BV1pxKB6hEVA)
+
 ## Rust aligned:
 commit:6d95da6e7082e19a03123ad765b3d5f117731621 Date:   Fri Jul 10 08:42:32 2026
 
@@ -38,8 +40,8 @@ The companion CLI project [gitoxide-cli](https://gitee.com/iJetLi/gitoxide-cli) 
 |---------|--------|-------|
 | init | ✅ Implemented | Create `.git` directory structure, HEAD, config |
 | open / discover | ✅ Implemented | Upward `.git` search, bare repo support |
-| clone | ⚠️ Partial | Inits repo + adds remote, but does not fetch pack data yet |
-| fetch | ⚠️ Partial | Want/have negotiation works, but fetched pack not written to ODB |
+| clone | ✅ Implemented | Git Protocol V2, pack write + index + refs + checkout |
+| fetch | ✅ Implemented | Git Protocol V2, pack data written to ODB, refs updated |
 | push (HTTP/HTTPS) | ✅ Implemented | Smart HTTP push with TLS, Basic Auth, pack generation |
 | push (SSH) | ⚠️ Fallback | Falls back to system `git push` command |
 | status | ✅ Implemented | Index vs worktree comparison, untracked file detection |
@@ -51,7 +53,7 @@ The companion CLI project [gitoxide-cli](https://gitee.com/iJetLi/gitoxide-cli) 
 | merge | ✅ Implemented | Three-way text merge |
 | write-tree | ✅ Implemented | Build tree objects from index entries |
 | clean | ✅ Implemented | Remove untracked files (dry-run support) |
-| archive | ✅ Implemented | Tree traversal to build archive entries |
+| archive | ✅ Implemented | Tar output with pax_global_header, stdout/file output |
 | blame | ⚠️ Partial | Finds blob in tree, no line-by-line tracking |
 | checkout | ❌ Not implemented | |
 | rebase | ❌ Not implemented | |
@@ -64,9 +66,9 @@ The companion CLI project [gitoxide-cli](https://gitee.com/iJetLi/gitoxide-cli) 
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Smart HTTP (fetch) | ✅ Implemented | V1 & V2 protocol |
+| Smart HTTP (fetch) | ✅ Implemented | V1 & V2 protocol, ls-refs, sideband |
 | Smart HTTP (push) | ✅ Implemented | With `report-status`, `side-band-6k` |
-| HTTPS (TLS) | ✅ Implemented | Via `stdx.net.tls` (OpenSSL 3) |
+| HTTPS (TLS) | ✅ Implemented | Via `stdx.net.http.Client` + CookieJar (OpenSSL 3) |
 | SSH | ⚠️ Fallback | Falls back to system `git` command |
 | Git protocol | ❌ Not implemented | `git://` scheme |
 | Local protocol | ❌ Not implemented | |

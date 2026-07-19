@@ -390,9 +390,13 @@ func v2ParseCapabilities(data: Array<Byte>): ArrayList<String> {
             j++
         }
         var lenOpt = parseHexInt64(lenStr.toString())
-        if (lenOpt.isNone()) { break }
+        if (lenOpt.isNone()) {
+            break
+        }
         var lineLen = lenOpt.getOrThrow()
-        if (lineLen <= 4 || lineLen > data.size - pos) { break }
+        if (lineLen <= 4 || lineLen > data.size - pos) {
+            break
+        }
         var line = StringBuilder()
         var k = pos + 4
         while (k < pos + lineLen && k < data.size) {
@@ -400,7 +404,8 @@ func v2ParseCapabilities(data: Array<Byte>): ArrayList<String> {
             k++
         }
         var lineStr = line.toString()
-        if (lineStr.startsWith("agent=") || lineStr.startsWith("ls-refs=") || lineStr.startsWith("fetch=") || lineStr.startsWith("server-option") || lineStr.startsWith("object-format=")) {
+        if (lineStr.startsWith("agent=") || lineStr.startsWith("ls-refs=") || lineStr.startsWith("fetch=") ||
+            lineStr.startsWith("server-option") || lineStr.startsWith("object-format=")) {
             caps.add(lineStr)
         }
         pos += lineLen
@@ -423,14 +428,20 @@ func v2ParseLsRefs(data: Array<Byte>, v2Caps: ArrayList<String>): ?HandshakeResu
             j++
         }
         var lenOpt = parseHexInt64(lenStr.toString())
-        if (lenOpt.isNone()) { break }
+        if (lenOpt.isNone()) {
+            break
+        }
         var lineLen = lenOpt.getOrThrow()
         if (lineLen <= 4) {
-            if (lineLen == 0) { break }
+            if (lineLen == 0) {
+                break
+            }
             pos += lineLen
             continue
         }
-        if (lineLen > data.size - pos) { break }
+        if (lineLen > data.size - pos) {
+            break
+        }
         var line = StringBuilder()
         var k = pos + 4
         while (k < pos + lineLen && k < data.size) {
@@ -502,7 +513,9 @@ func v2ParseFetchResponse(body: Array<Byte>): ?FetchResult {
             if (lineData.size < 1) {
                 continue
             }
-            if (lineData.size == 9 && lineData[0] == UInt8(112) && lineData[1] == UInt8(97) && lineData[2] == UInt8(99) && lineData[3] == UInt8(107) && lineData[4] == UInt8(102) && lineData[5] == UInt8(105) && lineData[6] == UInt8(108) && lineData[7] == UInt8(101) && lineData[8] == UInt8(10)) {
+            if (lineData.size == 9 && lineData[0] == UInt8(112) && lineData[1] == UInt8(97) && lineData[2] == UInt8(99) &&
+                lineData[3] == UInt8(107) && lineData[4] == UInt8(102) && lineData[5] == UInt8(105) && lineData[6] ==
+                UInt8(108) && lineData[7] == UInt8(101) && lineData[8] == UInt8(10)) {
                 inPackfile = true
                 continue
             }
@@ -653,24 +666,39 @@ public class HttpTransport <: ClientTransport {
         var body = ArrayList<Byte>()
         var cmdLine = "command=ls-refs\n"
         var cmdEncoded = PacketLine.encode(cmdLine.toArray())
-        for (b in cmdEncoded) { body.add(b) }
+        for (b in cmdEncoded) {
+            body.add(b)
+        }
         var agentLine = "agent=git/gix-cj/1.0\n"
         var agentEncoded = PacketLine.encode(agentLine.toArray())
-        for (b in agentEncoded) { body.add(b) }
+        for (b in agentEncoded) {
+            body.add(b)
+        }
         var objLine = "object-format=sha1\n"
         var objEncoded = PacketLine.encode(objLine.toArray())
-        for (b in objEncoded) { body.add(b) }
-        for (b in PacketLine.delimiter()) { body.add(b) }
+        for (b in objEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.delimiter()) {
+            body.add(b)
+        }
         var symrefsLine = "symrefs\n"
         var symrefsEncoded = PacketLine.encode(symrefsLine.toArray())
-        for (b in symrefsEncoded) { body.add(b) }
+        for (b in symrefsEncoded) {
+            body.add(b)
+        }
         var peelLine = "peel\n"
         var peelEncoded = PacketLine.encode(peelLine.toArray())
-        for (b in peelEncoded) { body.add(b) }
-        for (b in PacketLine.flush()) { body.add(b) }
+        for (b in peelEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.flush()) {
+            body.add(b)
+        }
 
         var fullUrl = "http://" + host + ":" + port.toString() + postPath
-        httpPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
+        httpPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request",
+            "application/x-git-upload-pack-result")
     }
 
     func parseV2Capabilities(data: Array<Byte>): ArrayList<String> {
@@ -695,31 +723,48 @@ public class HttpTransport <: ClientTransport {
         var body = ArrayList<Byte>()
         var cmdLine = "command=fetch\n"
         var cmdEncoded = PacketLine.encode(cmdLine.toArray())
-        for (b in cmdEncoded) { body.add(b) }
+        for (b in cmdEncoded) {
+            body.add(b)
+        }
         var agentLine = "agent=git/gix-cj/1.0\n"
         var agentEncoded = PacketLine.encode(agentLine.toArray())
-        for (b in agentEncoded) { body.add(b) }
+        for (b in agentEncoded) {
+            body.add(b)
+        }
         var objLine = "object-format=sha1\n"
         var objEncoded = PacketLine.encode(objLine.toArray())
-        for (b in objEncoded) { body.add(b) }
-        for (b in PacketLine.delimiter()) { body.add(b) }
+        for (b in objEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.delimiter()) {
+            body.add(b)
+        }
         for (want in wants) {
             var wantLine = "want " + want.toHexString() + "\n"
             var encoded = PacketLine.encode(wantLine.toArray())
-            for (b in encoded) { body.add(b) }
+            for (b in encoded) {
+                body.add(b)
+            }
         }
         for (have in haves) {
             var haveLine = "have " + have.toHexString() + "\n"
             var encoded = PacketLine.encode(haveLine.toArray())
-            for (b in encoded) { body.add(b) }
+            for (b in encoded) {
+                body.add(b)
+            }
         }
         var doneEncoded = PacketLine.encode("done\n".toArray())
-        for (b in doneEncoded) { body.add(b) }
-        for (b in PacketLine.flush()) { body.add(b) }
+        for (b in doneEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.flush()) {
+            body.add(b)
+        }
 
         var fullUrl = "http://" + lastHost + ":" + lastPort.toString() + postPath
         try {
-            var respBody = httpPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
+            var respBody = httpPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request",
+                "application/x-git-upload-pack-result")
             if (let Some(data) <- respBody) {
                 return parseV2FetchResponse(data)
             }
@@ -786,7 +831,8 @@ public class HttpTransport <: ClientTransport {
 
         var fullUrl = "http://" + lastHost + ":" + lastPort.toString() + postPath
         try {
-            var respBody = httpPost(fullUrl, body.toArray(), "application/x-git-receive-pack-request", "application/x-git-receive-pack-result")
+            var respBody = httpPost(fullUrl, body.toArray(), "application/x-git-receive-pack-request",
+                "application/x-git-receive-pack-result")
             if (let Some(data) <- respBody) {
                 return parsePushResponse(data)
             }
@@ -841,8 +887,13 @@ public class HttpTransport <: ClientTransport {
 
     func httpPost(url: String, body: Array<Byte>, contentType: String, acceptType: String): ?Array<Byte> {
         try {
-            var bodyArr = Array<UInt8>(body.size, { i => UInt8(body[i]) })
-            var builder = HttpRequestBuilder().url(url).post().header("Content-Type", contentType).header("Accept", acceptType).body(bodyArr)
+            var bodyArr = Array<UInt8>(body.size, {i => UInt8(body[i])})
+            var builder = HttpRequestBuilder()
+                .url(url)
+                .post()
+                .header("Content-Type", contentType)
+                .header("Accept", acceptType)
+                .body(bodyArr)
             builder = builder.header("User-Agent", "git/2.0")
             builder = builder.header("Git-Protocol", "version=2")
             if (let Some(auth) <- authHeader) {
@@ -856,10 +907,6 @@ public class HttpTransport <: ClientTransport {
             None
         }
     }
-
-
-
-
 
     // 解析 Smart HTTP 握手响应
     func parseHandshakeResponse(body: Array<Byte>, service: Service): ?HandshakeResult {
@@ -1205,7 +1252,10 @@ public class TlsHttpTransport <: ClientTransport {
         authHeader = None
         var tlsConfig = TlsClientConfig()
         tlsConfig.verifyMode = CertificateVerifyMode.TrustAll
-        httpClient = ClientBuilder().tlsConfig(tlsConfig).cookieJar(CookieJar.createDefaultCookieJar(ArrayList<String>(), true)).build()
+        httpClient = ClientBuilder()
+            .tlsConfig(tlsConfig)
+            .cookieJar(CookieJar.createDefaultCookieJar(ArrayList<String>(), true))
+            .build()
     }
 
     public func handshake(url: Url, service: Service): ?HandshakeResult {
@@ -1260,24 +1310,39 @@ public class TlsHttpTransport <: ClientTransport {
         var body = ArrayList<Byte>()
         var cmdLine = "command=ls-refs\n"
         var cmdEncoded = PacketLine.encode(cmdLine.toArray())
-        for (b in cmdEncoded) { body.add(b) }
+        for (b in cmdEncoded) {
+            body.add(b)
+        }
         var agentLine = "agent=git/gix-cj/1.0\n"
         var agentEncoded = PacketLine.encode(agentLine.toArray())
-        for (b in agentEncoded) { body.add(b) }
+        for (b in agentEncoded) {
+            body.add(b)
+        }
         var objLine = "object-format=sha1\n"
         var objEncoded = PacketLine.encode(objLine.toArray())
-        for (b in objEncoded) { body.add(b) }
-        for (b in PacketLine.delimiter()) { body.add(b) }
+        for (b in objEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.delimiter()) {
+            body.add(b)
+        }
         var symrefsLine = "symrefs\n"
         var symrefsEncoded = PacketLine.encode(symrefsLine.toArray())
-        for (b in symrefsEncoded) { body.add(b) }
+        for (b in symrefsEncoded) {
+            body.add(b)
+        }
         var peelLine = "peel\n"
         var peelEncoded = PacketLine.encode(peelLine.toArray())
-        for (b in peelEncoded) { body.add(b) }
-        for (b in PacketLine.flush()) { body.add(b) }
+        for (b in peelEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.flush()) {
+            body.add(b)
+        }
 
         var fullUrl = "https://" + host + ":" + port.toString() + postPath
-        httpsPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
+        httpsPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request",
+            "application/x-git-upload-pack-result")
     }
 
     public func fetch(wants: ArrayList<ObjectId>, haves: ArrayList<ObjectId>): ?FetchResult {
@@ -1294,31 +1359,48 @@ public class TlsHttpTransport <: ClientTransport {
         var body = ArrayList<Byte>()
         var cmdLine = "command=fetch\n"
         var cmdEncoded = PacketLine.encode(cmdLine.toArray())
-        for (b in cmdEncoded) { body.add(b) }
+        for (b in cmdEncoded) {
+            body.add(b)
+        }
         var agentLine = "agent=git/gix-cj/1.0\n"
         var agentEncoded = PacketLine.encode(agentLine.toArray())
-        for (b in agentEncoded) { body.add(b) }
+        for (b in agentEncoded) {
+            body.add(b)
+        }
         var objLine = "object-format=sha1\n"
         var objEncoded = PacketLine.encode(objLine.toArray())
-        for (b in objEncoded) { body.add(b) }
-        for (b in PacketLine.delimiter()) { body.add(b) }
+        for (b in objEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.delimiter()) {
+            body.add(b)
+        }
         for (want in wants) {
             var wantLine = "want " + want.toHexString() + "\n"
             var encoded = PacketLine.encode(wantLine.toArray())
-            for (b in encoded) { body.add(b) }
+            for (b in encoded) {
+                body.add(b)
+            }
         }
         for (have in haves) {
             var haveLine = "have " + have.toHexString() + "\n"
             var encoded = PacketLine.encode(haveLine.toArray())
-            for (b in encoded) { body.add(b) }
+            for (b in encoded) {
+                body.add(b)
+            }
         }
         var doneEncoded = PacketLine.encode("done\n".toArray())
-        for (b in doneEncoded) { body.add(b) }
-        for (b in PacketLine.flush()) { body.add(b) }
+        for (b in doneEncoded) {
+            body.add(b)
+        }
+        for (b in PacketLine.flush()) {
+            body.add(b)
+        }
 
         var fullUrl = "https://" + lastHost + ":" + lastPort.toString() + postPath
         try {
-            var respBody = httpsPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request", "application/x-git-upload-pack-result")
+            var respBody = httpsPost(fullUrl, body.toArray(), "application/x-git-upload-pack-request",
+                "application/x-git-upload-pack-result")
             if (let Some(data) <- respBody) {
                 return v2ParseFetchResponse(data)
             }
@@ -1379,7 +1461,8 @@ public class TlsHttpTransport <: ClientTransport {
 
         var fullUrl = "https://" + lastHost + ":" + lastPort.toString() + postPath
         try {
-            var respBody = httpsPost(fullUrl, body.toArray(), "application/x-git-receive-pack-request", "application/x-git-receive-pack-result")
+            var respBody = httpsPost(fullUrl, body.toArray(), "application/x-git-receive-pack-request",
+                "application/x-git-receive-pack-result")
             if (let Some(data) <- respBody) {
                 return parsePushResponse(data)
             }
@@ -1433,8 +1516,13 @@ public class TlsHttpTransport <: ClientTransport {
 
     func httpsPost(url: String, body: Array<Byte>, contentType: String, acceptType: String): ?Array<Byte> {
         try {
-            var bodyArr = Array<UInt8>(body.size, { i => UInt8(body[i]) })
-            var builder = HttpRequestBuilder().url(url).post().header("Content-Type", contentType).header("Accept", acceptType).body(bodyArr)
+            var bodyArr = Array<UInt8>(body.size, {i => UInt8(body[i])})
+            var builder = HttpRequestBuilder()
+                .url(url)
+                .post()
+                .header("Content-Type", contentType)
+                .header("Accept", acceptType)
+                .body(bodyArr)
             builder = builder.header("User-Agent", "git/2.0")
             builder = builder.header("Git-Protocol", "version=2")
             if (let Some(auth) <- authHeader) {
@@ -1448,7 +1536,6 @@ public class TlsHttpTransport <: ClientTransport {
             None
         }
     }
-
 
     func parseHandshakeResponse(body: Array<Byte>, service: Service): ?HandshakeResult {
         var pos: Int64 = 0

@@ -14,18 +14,21 @@ import std.unittest.*
 // Archive 测试 — 对齐 gix-archive/tests/archive.rs
 // ============================================================
 
+// 对齐 Rust: Archive::default()
 @Test
 func testArchiveConstruct(): Unit {
-    // 对齐 Rust: Archive::default()
     let a = Archive()
     if (a.entries.size != 0) {
         throw Exception("entries should be empty initially")
     }
+    if (a.commitId != "") {
+        throw Exception("commitId should be empty initially")
+    }
 }
 
+// 对齐 Rust: Archive 添加条目
 @Test
 func testArchiveAddEntry(): Unit {
-    // 对齐 Rust: Archive 添加条目
     let a = Archive()
     a.addEntry("README.md", 0o100644, [72, 101, 108, 108, 111])
     if (a.entries.size != 1) {
@@ -33,9 +36,9 @@ func testArchiveAddEntry(): Unit {
     }
 }
 
+// 对齐 Rust: Archive 包含多个文件
 @Test
 func testArchiveAddMultipleEntries(): Unit {
-    // 对齐 Rust: Archive 包含多个文件
     let a = Archive()
     a.addEntry("file1.txt", 0o100644, [65])
     a.addEntry("file2.txt", 0o100755, [66])
@@ -49,13 +52,12 @@ func testArchiveAddMultipleEntries(): Unit {
 // ArchiveEntry 测试 — 对齐 gix-archive/tests/entry.rs
 // ============================================================
 
+// 对齐 Rust: ArchiveEntry 构造与字段访问
 @Test
 func testArchiveEntryConstruct(): Unit {
-    // 对齐 Rust: ArchiveEntry { path, mode, data }
-    let data: Array<Byte> = [72, 101, 108, 108, 111]
-    let entry = ArchiveEntry("hello.txt", 0o100644, data)
+    let entry = ArchiveEntry("hello.txt", 0o100644, [72, 101, 108, 108, 111])
     if (entry.path != "hello.txt") {
-        throw Exception("path should be 'hello.txt'")
+        throw Exception("path should be hello.txt")
     }
     if (entry.mode != 0o100644) {
         throw Exception("mode should be 0o100644")
@@ -65,18 +67,18 @@ func testArchiveEntryConstruct(): Unit {
     }
 }
 
+// 对齐 Rust: ArchiveEntry 空数据
 @Test
 func testArchiveEntryEmptyData(): Unit {
-    // 对齐 Rust: ArchiveEntry 空文件
     let entry = ArchiveEntry("empty.txt", 0o100644, [])
     if (entry.data.size != 0) {
         throw Exception("data should be empty")
     }
 }
 
+// 对齐 Rust: ArchiveEntry 可执行模式
 @Test
 func testArchiveEntryExecutableMode(): Unit {
-    // 对齐 Rust: ArchiveEntry 可执行文件模式
     let entry = ArchiveEntry("run.sh", 0o100755, [35, 33, 47, 98, 105, 110])
     if (entry.mode != 0o100755) {
         throw Exception("mode should be 0o100755")
@@ -87,37 +89,35 @@ func testArchiveEntryExecutableMode(): Unit {
 // writeTar 函数测试 — 对齐 gix-archive/tests/tar.rs
 // ============================================================
 
+// 对齐 Rust: writeTar 空归档
+// 空归档：pax_global_header(512+512) + 结束块(1024) = 2048
 @Test
 func testWriteTarEmptyArchive(): Unit {
-    // 对齐 Rust: writeTar 空归档
     let a = Archive()
     let result = writeTar(a)
-    if (result.size != 0) {
-        throw Exception("empty archive should produce empty tar")
+    if (result.size != 2048) {
+        throw Exception("empty archive should produce 2048 bytes (pax_global_header + end marker), got ${result.size}")
     }
 }
 
+// 对齐 Rust: writeTar 包含单个文件的归档
 @Test
 func testWriteTarSingleEntry(): Unit {
-    // 对齐 Rust: writeTar 包含单个文件的归档
     let a = Archive()
     a.addEntry("hello.txt", 0o100644, [72, 101, 108, 108, 111])
     let result = writeTar(a)
-    // tar 头部 512 字节 + 数据 5 字节 + 填充到 512 字节 = 1024 字节
-    // 再加结尾 512*2 = 2048（但当前实现未写结尾块）
     if (result.size == 0) {
         throw Exception("tar should not be empty")
     }
-    // 验证文件名出现在 tar 数据中
-    let nameFound = result.size > 0
-    if (!nameFound) {
-        throw Exception("tar should contain data")
+    // pax_global_header(1024) + file header(512) + data(5 padded to 512) + end marker(1024) = 3072
+    if (result.size != 3072) {
+        throw Exception("single entry tar should be 3072 bytes, got ${result.size}")
     }
 }
 
+// 对齐 Rust: writeTar 包含多个文件的归档
 @Test
 func testWriteTarMultipleEntries(): Unit {
-    // 对齐 Rust: writeTar 包含多个文件的归档
     let a = Archive()
     a.addEntry("a.txt", 0o100644, [65])
     a.addEntry("b.txt", 0o100644, [66])
@@ -127,40 +127,44 @@ func testWriteTarMultipleEntries(): Unit {
     }
 }
 
+// 对齐 Rust: tar 头部前 100 字节为文件名
+// pax_global_header 在前 1024 字节，文件条目从 offset 1024 开始
 @Test
 func testWriteTarHeaderStructure(): Unit {
-    // 对齐 Rust: tar 头部前 100 字节为文件名
     let a = Archive()
     a.addEntry("test.txt", 0o100644, [84])
     let result = writeTar(a)
-    // 验证文件名 "test.txt" 出现在头部前 100 字节
+    // 文件名 "test.txt" 出现在 offset 1024 处（pax_global_header 之后）
+    let paxSize = 1024
     let name = "test.txt".toArray()
     var nameMatch = true
     for (i in 0..name.size) {
-        if (result[i] != name[i]) {
+        if (result[paxSize + i] != name[i]) {
             nameMatch = false
         }
     }
     if (!nameMatch) {
-        throw Exception("tar header should start with filename")
+        throw Exception("tar header at offset 1024 should start with filename")
     }
 }
 
+// 对齐 Rust: tar 数据填充到 512 字节边界
+// pax_global_header(1024) + header(512) + data 3 padded to 512 + end marker(1024) = 3072
 @Test
 func testWriteTarPadding(): Unit {
-    // 对齐 Rust: tar 数据填充到 512 字节边界
     let a = Archive()
     a.addEntry("pad.txt", 0o100644, [1, 2, 3])
     let result = writeTar(a)
-    // 头部 512 + 数据 3 + 填充 509 = 1024
-    if (result.size != 1024) {
-        throw Exception("tar with 3-byte data should be 1024 bytes (512 header + 512 data block)")
+    if (result.size != 3072) {
+        throw Exception(
+            "tar with 3-byte data should be 3072 bytes (pax + header + data block + end), got ${result.size}")
     }
 }
 
+// 对齐 Rust: 数据恰好为 512 字节时无需额外填充
+// pax_global_header(1024) + header(512) + data 512 + end marker(1024) = 3072
 @Test
 func testWriteTarExactBlockData(): Unit {
-    // 对齐 Rust: 数据恰好为 512 字节时无需额外填充
     let a = Archive()
     var data = ArrayList<Byte>()
     for (i in 0..512) {
@@ -168,11 +172,54 @@ func testWriteTarExactBlockData(): Unit {
     }
     a.addEntry("full.txt", 0o100644, data.toArray())
     let result = writeTar(a)
-    // 头部 512 + 数据 512 = 1024
-    if (result.size != 1024) {
-        throw Exception("tar with 512-byte data should be 1024 bytes")
+    if (result.size != 3072) {
+        throw Exception("tar with 512-byte data should be 3072 bytes (pax + header + data + end), got ${result.size}")
     }
 }
 
-// 注意：原版 gitoxide 的 archive 测试依赖仓库对象数据库与树对象解析，
-// 仓颉中暂无法实现从仓库生成归档的集成测试，待 gix_odb 与 gix_test_utils 完善后补充。
+// 对齐 Rust: pax_global_header 包含 commit SHA-1 作为 comment
+@Test
+func testWriteTarPaxGlobalHeader(): Unit {
+    let a = Archive()
+    a.commitId = "abc123"
+    let result = writeTar(a)
+    // pax_global_header 的 typeflag 应为 'g' (103)
+    if (result[156] != UInt8(103)) {
+        throw Exception("pax_global_header typeflag should be 'g'")
+    }
+    // pax 数据区应包含 "comment=abc123"
+    var found = false
+    var paxData = ArrayList<Byte>()
+    for (i in 512..1024) {
+        if (result[i] != UInt8(0)) {
+            paxData.add(result[i])
+        }
+    }
+    var paxStr = String.fromUtf8(paxData.toArray())
+    if (paxStr.contains("comment=abc123")) {
+        found = true
+    }
+    if (!found) {
+        throw Exception("pax data should contain comment=abc123, got: ${paxStr}")
+    }
+}
+
+// 对齐 Rust: tar mode 仅保留权限位（0o100644 -> 0o644）
+@Test
+func testWriteTarModeStripped(): Unit {
+    let a = Archive()
+    a.addEntry("mode.txt", 0o100644, [65])
+    let result = writeTar(a)
+    // 文件 header 从 offset 1024 开始，mode 字段在 offset 100-108
+    let fileHeaderStart = 1024
+    let modeStart = fileHeaderStart + 100
+    var modeStr = StringBuilder()
+    for (i in 0..8) {
+        if (result[modeStart + i] != UInt8(0)) {
+            modeStr.append(Rune(result[modeStart + i]))
+        }
+    }
+    if (!modeStr.toString().contains("644")) {
+        throw Exception("tar mode should contain 644 (permission bits only), got: ${modeStr.toString()}")
+    }
+}

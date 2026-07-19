@@ -236,8 +236,8 @@ func writePackAndIndex(repo: Repository, packData: Array<Byte>): Bool {
 
         let entryLen = hdrSize + compSize
         let crcOffset = offset
-        var crcBytes = Array<Byte>(entryLen, { i =>
-            if (crcOffset + i < packData.size) {
+        var crcBytes = Array<Byte>(entryLen, {
+            i => if (crcOffset + i < packData.size) {
                 packData[crcOffset + i]
             } else {
                 UInt8(0)
@@ -275,8 +275,8 @@ func writePackAndIndex(repo: Repository, packData: Array<Byte>): Bool {
 
         let entryLen = hdrSize + compSize
         let crcOffset = offset
-        var crcBytes = Array<Byte>(entryLen, { i =>
-            if (crcOffset + i < packData.size) {
+        var crcBytes = Array<Byte>(entryLen, {
+            i => if (crcOffset + i < packData.size) {
                 packData[crcOffset + i]
             } else {
                 UInt8(0)
@@ -286,14 +286,18 @@ func writePackAndIndex(repo: Repository, packData: Array<Byte>): Bool {
 
         if (entry.header.isDelta()) {
             let shaToEntry = shaToEntryMut
-            let decodedOpt = dataFile.decodeEntryData(entry, { id: ObjectId =>
-                let key = id.toHexString()
-                if (let Some(baseEntry) <- shaToEntry.get(key)) {
-                    Some(ResolvedBase.InPack(baseEntry))
-                } else {
-                    Option<ResolvedBase>.None
+            let decodedOpt = dataFile.decodeEntryData(
+                entry,
+                {
+                    id: ObjectId =>
+                        let key = id.toHexString()
+                        if (let Some(baseEntry) <- shaToEntry.get(key)) {
+                            Some(ResolvedBase.InPack(baseEntry))
+                        } else {
+                            Option<ResolvedBase>.None
+                        }
                 }
-            })
+            )
             if (let Some(decoded) <- decodedOpt) {
                 let id = computeHash(repo.hashKind, decoded[0], decoded[1])
                 deltaIndexEntries.add(IndexEntry(id, offset, Some(crc)))

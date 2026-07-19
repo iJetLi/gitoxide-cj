@@ -85,7 +85,8 @@ public class RemoteQuery {
                     let handshakeResult = transport.handshake(parsedUrl, service)
                     if (let Some(result) <- handshakeResult) {
                         var showHandshake = handshakeInfo
-                        return Some(RemoteRefsResult(result.refs, result.protocolVersion, result.capabilities, showHandshake))
+                        return Some(
+                            RemoteRefsResult(result.refs, result.protocolVersion, result.capabilities, showHandshake))
                     }
                 } else {
                     return refsViaGitCommand(u)

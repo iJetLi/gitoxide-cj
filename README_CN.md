@@ -4,6 +4,8 @@
 
 gitoxide-cj 提供了一套完整的 Git 底层（plumbing）包，用于在仓颉语言中构建 Git 兼容的应用程序，涵盖对象存储、引用管理、协议通信、索引操作等功能。
 
+Video: [Bilibili](https://www.bilibili.com/video/BV1pxKB6hEVA)
+
 ## 对应版本
 
 commit:6d95da6e7082e19a03123ad765b3d5f117731621 Date:   Fri Jul 10 08:42:32 2026
@@ -39,8 +41,8 @@ import gitoxide.gix_ref.*
 |------|------|------|
 | init | ✅ 已实现 | 创建 `.git` 目录结构、HEAD、配置 |
 | open / discover | ✅ 已实现 | 向上搜索 `.git` 目录，支持裸仓库 |
-| clone | ⚠️ 部分实现 | 初始化仓库 + 添加远程，但尚未拉取 pack 数据 |
-| fetch | ⚠️ 部分实现 | want/have 协商已实现，但拉取的 pack 未写入 ODB |
+| clone | ✅ 已实现 | Git Protocol V2，pack 写入 + 索引 + 引用 + checkout |
+| fetch | ✅ 已实现 | Git Protocol V2，pack 数据写入 ODB，引用更新 |
 | push (HTTP/HTTPS) | ✅ 已实现 | Smart HTTP push，支持 TLS、Basic Auth、pack 生成 |
 | push (SSH) | ⚠️ 回退方案 | 回退到系统 `git push` 命令 |
 | status | ✅ 已实现 | 索引与工作区比较，未跟踪文件检测 |
@@ -52,7 +54,7 @@ import gitoxide.gix_ref.*
 | merge | ✅ 已实现 | 三路文本合并 |
 | write-tree | ✅ 已实现 | 从索引条目构建树对象 |
 | clean | ✅ 已实现 | 删除未跟踪文件（支持 dry-run） |
-| archive | ✅ 已实现 | 树遍历构建归档条目 |
+| archive | ✅ 已实现 | Tar 输出含 pax_global_header，支持 stdout/文件输出 |
 | blame | ⚠️ 部分实现 | 查找树中的 blob，无逐行追踪 |
 | checkout | ❌ 未实现 | |
 | rebase | ❌ 未实现 | |
@@ -65,9 +67,9 @@ import gitoxide.gix_ref.*
 
 | 功能 | 状态 | 说明 |
 |------|------|------|
-| Smart HTTP (fetch) | ✅ 已实现 | V1 和 V2 协议 |
+| Smart HTTP (fetch) | ✅ 已实现 | V1 和 V2 协议，ls-refs，sideband |
 | Smart HTTP (push) | ✅ 已实现 | 支持 `report-status`、`side-band-6k` |
-| HTTPS (TLS) | ✅ 已实现 | 通过 `stdx.net.tls`（OpenSSL 3） |
+| HTTPS (TLS) | ✅ 已实现 | 通过 `stdx.net.http.Client` + CookieJar（OpenSSL 3） |
 | SSH | ⚠️ 回退方案 | 回退到系统 `git` 命令 |
 | Git 协议 | ❌ 未实现 | `git://` 协议 |
 | 本地协议 | ❌ 未实现 | |

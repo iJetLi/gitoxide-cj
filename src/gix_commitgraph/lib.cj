@@ -17,7 +17,6 @@ public let GENERATION_NUMBER_INFINITY: UInt32 = 0xFFFFFFFF
 
 // 对齐 Rust: gix_commitgraph::file::commit::GENERATION_NUMBER_MAX
 public let GENERATION_NUMBER_MAX: UInt32 = 0x3FFFFFFF
-
 public let NO_PARENT: UInt32 = 0x70000000
 
 // 对齐 Rust: gix_commitgraph::Position
