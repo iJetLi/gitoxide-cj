@@ -10,7 +10,9 @@ import gitoxide.gix_transport.*
 import gitoxide.gix_url.*
 import gitoxide.gix_hash.*
 import gitoxide.gix_config.*
+import gitoxide.gix_utils.*
 import std.collection.*
+import std.process.*
 
 public class FetchQuery {
     public var repo: Repository
@@ -19,11 +21,15 @@ public class FetchQuery {
         this.repo = repo
     }
 
-    // 从远程仓库拉取数据
-    // 对齐原版：gitoxide-core/src/repository/fetch.rs::fetch()
     public func fetch(remoteName: String): ?FetchResult {
         let remoteUrl = getRemoteUrl(remoteName)
         if (let Some(urlStr) <- remoteUrl) {
+            if (urlStr.startsWith("ssh://") || urlStr.startsWith("git@")) {
+                return fetchViaGitCommand(remoteName)
+            }
+            if (urlStr.startsWith("file://")) {
+                return fetchViaGitCommand(remoteName)
+            }
             let url = Url.parse(urlStr)
             if (let Some(u) <- url) {
                 let transportOpt = createTransport(u, urlStr)
@@ -75,24 +81,10 @@ public class FetchQuery {
             }
             return Some(t)
         }
-        None
-    }
-
-    // 获取远程引用列表
-    public func remoteRefs(remoteName: String): ?HandshakeResult {
-        let remoteUrl = getRemoteUrl(remoteName)
-        if (let Some(urlStr) <- remoteUrl) {
-            let transport = HttpTransport()
-            let service = Service.gitUploadPack()
-            let url = Url.parse(urlStr)
-            if (let Some(u) <- url) {
-                transport.handshake(u, service)
-            } else {
-                None
-            }
-        } else {
-            None
+        if (url.scheme == Scheme.Git) {
+            return Some(GitTcpTransport())
         }
+        None
     }
 
     func getRemoteUrl(remoteName: String): ?String {
@@ -101,6 +93,37 @@ public class FetchQuery {
             let key = "remote." + remoteName + ".url"
             cfg.find(key)
         } else {
+            None
+        }
+    }
+
+    func fetchViaGitCommand(remoteName: String): ?FetchResult {
+        try {
+            var args = ArrayList<String>()
+            args.add("-C")
+            var workDir = repo.gitDir
+            if (workDir.endsWith("/.git") || workDir.endsWith("\\.git")) {
+                workDir = workDir[0..workDir.size - 4]
+            } else if (workDir.endsWith(".git")) {
+                workDir = workDir[0..workDir.size - 4]
+            }
+            args.add(workDir)
+            args.add("fetch")
+            args.add(remoteName)
+            let (exitCode, stdout, stderr) = executeWithOutput("git", args.toArray())
+            var stdoutStr = String.fromUtf8(stdout)
+            var stderrStr = String.fromUtf8(stderr)
+            if (!stdoutStr.isEmpty()) {
+                println(stdoutStr)
+            }
+            if (!stderrStr.isEmpty()) {
+                println(stderrStr)
+            }
+            if (exitCode != 0) {
+                return None
+            }
+            Some(FetchResult([], ArrayList<Ref>()))
+        } catch (_: Exception) {
             None
         }
     }

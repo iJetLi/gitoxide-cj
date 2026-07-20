@@ -150,7 +150,7 @@ public class RemoteQuery {
     // 对齐原版：gitoxide-core/src/repository/remote.rs::by_name_or_url()
     func resolveRemoteUrl(nameOrUrl: String): ?String {
         if (nameOrUrl.startsWith("http://") || nameOrUrl.startsWith("https://") || nameOrUrl.startsWith("git://") ||
-            nameOrUrl.startsWith("ssh://") || nameOrUrl.startsWith("file://")) {
+            nameOrUrl.startsWith("ssh://") || nameOrUrl.startsWith("file://") || nameOrUrl.startsWith("git@")) {
             return Some(nameOrUrl)
         }
         if (nameOrUrl.contains(":") && nameOrUrl.contains("/")) {
@@ -182,7 +182,10 @@ public class RemoteQuery {
             return Some(t)
         }
         if (url.scheme == Scheme.Git) {
-            return Some(HttpTransport())
+            return Some(GitTcpTransport())
+        }
+        if (url.scheme == Scheme.File) {
+            return Some(FileTransport())
         }
         None
     }

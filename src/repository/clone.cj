@@ -20,6 +20,7 @@ import gitoxide.gix_object.TreeRef
 import gitoxide.gix_config.*
 import std.collection.*
 import std.fs.*
+import std.process.*
 
 // 克隆选项，控制克隆行为
 public class CloneOptions {
@@ -73,6 +74,12 @@ public class PrepareCheckout {
 // 参数 options：克隆选项
 // 返回值：成功返回 Repository，失败返回 None
 public func clone(url: String, destPath: String, options: CloneOptions): ?Repository {
+    if (url.startsWith("ssh://") || url.startsWith("git@")) {
+        return cloneViaGitCommand(url, destPath, options)
+    }
+    if (url.startsWith("file://")) {
+        return cloneViaGitCommand(url, destPath, options)
+    }
     let parsedUrl = Url.parse(url)
     if (parsedUrl.isNone()) {
         println("[clone] Failed to parse URL: ${url}")
@@ -164,6 +171,9 @@ func createCloneTransport(url: Url, urlStr: String): ?ClientTransport {
             t.authHeader = Some("Basic " + auth)
         }
         return Some(t)
+    }
+    if (url.scheme == Scheme.Git) {
+        return Some(GitTcpTransport())
     }
     None
 }
@@ -492,6 +502,30 @@ func parentDirClone(path: String): String {
         path[0..idx]
     } else {
         path
+    }
+}
+
+func cloneViaGitCommand(url: String, destPath: String, options: CloneOptions): ?Repository {
+    try {
+        var args = ArrayList<String>()
+        args.add("clone")
+        if (options.bare) {
+            args.add("--bare")
+        }
+        if (let Some(branch) <- options.branch) {
+            args.add("--branch")
+            args.add(branch)
+        }
+        args.add(url)
+        args.add(destPath)
+        let (exitCode, stdout, stderr) = executeWithOutput("git", args.toArray())
+        if (exitCode != 0) {
+            println("[clone] git clone failed with exit code " + exitCode.toString())
+            return None
+        }
+        Repository.open(destPath)
+    } catch (_: Exception) {
+        None
     }
 }
 

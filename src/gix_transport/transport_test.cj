@@ -7,6 +7,7 @@ package gitoxide.gix_transport
 
 import gitoxide.gix_hash.*
 import gitoxide.gix_url.*
+import gitoxide.gix_packetline.*
 import std.collection.*
 
 // ============================================================
@@ -797,5 +798,398 @@ func testV2CommandBuilderMultipleArguments(): Unit {
     }
     if (builder.capabilities.size != 2) {
         throw Exception("should have 2 capabilities")
+    }
+}
+
+// ============================================================
+// GitTcpTransport 测试 — 对齐 T015 git:// 协议传输
+// ============================================================
+
+@Test
+func testGitTcpTransportConstruct(): Unit {
+    let transport = GitTcpTransport()
+    if (transport.lastHost != "") {
+        throw Exception("lastHost should be empty on construction")
+    }
+    if (transport.lastPort != 9418) {
+        throw Exception("lastPort should default to 9418, got: " + transport.lastPort.toString())
+    }
+    if (transport.lastPath != "") {
+        throw Exception("lastPath should be empty on construction")
+    }
+    if (!transport.socket.isNone()) {
+        throw Exception("socket should be None on construction")
+    }
+    if (transport.handshakeRefs.size != 0) {
+        throw Exception("handshakeRefs should be empty on construction")
+    }
+    if (transport.handshakeCaps.size != 0) {
+        throw Exception("handshakeCaps should be empty on construction")
+    }
+    if (transport.handshakeVersion != ProtocolVersion.V1) {
+        throw Exception("handshakeVersion should default to V1")
+    }
+}
+
+@Test
+func testGitTcpTransportDefaultPort(): Unit {
+    let transport = GitTcpTransport()
+    if (transport.lastPort != 9418) {
+        throw Exception("default port should be 9418 (git protocol default)")
+    }
+}
+
+@Test
+func testGitTcpTransportUrlParseGitScheme(): Unit {
+    let url = Url.parse("git://github.com/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("should parse git:// URL")
+    }
+    let u = url.getOrThrow()
+    if (u.scheme != Scheme.Git) {
+        throw Exception("scheme should be Git")
+    }
+    if (u.host.isNone() || u.host.getOrThrow() != "github.com") {
+        throw Exception("host should be github.com")
+    }
+}
+
+@Test
+func testGitTcpTransportUrlParseCustomPort(): Unit {
+    let url = Url.parse("git://github.com:1234/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("should parse git:// URL with custom port")
+    }
+    let u = url.getOrThrow()
+    if (u.port.isNone() || u.port.getOrThrow() != 1234) {
+        throw Exception("port should be 1234")
+    }
+}
+
+@Test
+func testGitTcpTransportUrlParsePath(): Unit {
+    let url = Url.parse("git://example.com/foo/bar.git")
+    if (url.isNone()) {
+        throw Exception("should parse git:// URL with path")
+    }
+    let u = url.getOrThrow()
+    if (!u.path.startsWith("/foo/bar.git")) {
+        throw Exception("path should start with /foo/bar.git, got: " + u.path)
+    }
+}
+
+@Test
+func testGitTcpTransportDecodePktLineValid(): Unit {
+    let transport = GitTcpTransport()
+    var data = ArrayList<Byte>()
+    let line = "test line" + String.fromUtf8([UInt8(10)])
+    let encoded = PacketLine.encode(line.toArray())
+    for (b in encoded) {
+        data.add(b)
+    }
+    let result = transport.decodePktLineGit(data.toArray(), 0)
+    if (result.isNone()) {
+        throw Exception("should decode valid pkt-line")
+    }
+    if (let Some(r) <- result) {
+        let decoded = String.fromUtf8(r[0])
+        if (!decoded.startsWith("test line")) {
+            throw Exception("decoded content should start with test line, got: " + decoded)
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportDecodePktLineEmptyData(): Unit {
+    let transport = GitTcpTransport()
+    let data: Array<Byte> = []
+    let result = transport.decodePktLineGit(data, 0)
+    if (!result.isNone()) {
+        throw Exception("should return None for empty data")
+    }
+}
+
+@Test
+func testGitTcpTransportDecodePktLineTooShort(): Unit {
+    let transport = GitTcpTransport()
+    let data: Array<Byte> = [48, 48]
+    let result = transport.decodePktLineGit(data, 0)
+    if (!result.isNone()) {
+        throw Exception("should return None for data shorter than 4 bytes")
+    }
+}
+
+@Test
+func testGitTcpTransportParseRefLineSimple(): Unit {
+    let transport = GitTcpTransport()
+    let line = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 refs/heads/main"
+    let result = transport.parseRefLineGit(line, false)
+    if (result.isNone()) {
+        throw Exception("should parse simple ref line")
+    }
+    if (let Some(r) <- result) {
+        if (refName(r[0]) != "refs/heads/main") {
+            throw Exception("ref name should be refs/heads/main, got: " + refName(r[0]))
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportParseRefLineWithCapabilities(): Unit {
+    let transport = GitTcpTransport()
+    let line = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 HEAD" + String.fromUtf8([UInt8(0)]) + "multi_ack side-band agent=git/2.40.0"
+    let result = transport.parseRefLineGit(line, true)
+    if (result.isNone()) {
+        throw Exception("should parse ref line with capabilities")
+    }
+    if (let Some(r) <- result) {
+        if (refName(r[0]) != "HEAD") {
+            throw Exception("ref name should be HEAD")
+        }
+        if (r[1].size < 2) {
+            throw Exception("should have at least 2 capabilities, got: " + r[1].size.toString())
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportParseRefLinePeeledTag(): Unit {
+    let transport = GitTcpTransport()
+    let line = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 refs/tags/v1.0^{}"
+    let result = transport.parseRefLineGit(line, false)
+    if (result.isNone()) {
+        throw Exception("should parse peeled tag ref line")
+    }
+    if (let Some(r) <- result) {
+        match (r[0]) {
+            case Ref.Peeled(name, _, _) =>
+                if (name != "refs/tags/v1.0") {
+                    throw Exception("peeled tag name should be refs/tags/v1.0, got: " + name)
+                }
+            case _ => throw Exception("should be Peeled ref for ^{} suffix")
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportParseRefLineNoSpace(): Unit {
+    let transport = GitTcpTransport()
+    let line = "nospaceline"
+    let result = transport.parseRefLineGit(line, false)
+    if (!result.isNone()) {
+        throw Exception("should return None for ref line without space separator")
+    }
+}
+
+@Test
+func testGitTcpTransportParseGitPushResponseOk(): Unit {
+    let transport = GitTcpTransport()
+    var data = ArrayList<Byte>()
+    var okBytes = ArrayList<Byte>()
+    okBytes.add(UInt8(1))
+    for (b in "ok refs/heads/main".toArray()) {
+        okBytes.add(b)
+    }
+    okBytes.add(UInt8(10))
+    let encoded = PacketLine.encode(okBytes.toArray())
+    for (b in encoded) {
+        data.add(b)
+    }
+    for (b in PacketLine.flush()) {
+        data.add(b)
+    }
+    let result = transport.parseGitPushResponse(data.toArray())
+    if (result.isNone()) {
+        throw Exception("should parse push response with ok")
+    }
+    if (let Some(pr) <- result) {
+        if (pr.refUpdates.size != 1) {
+            throw Exception("should have 1 ref update, got: " + pr.refUpdates.size.toString())
+        }
+        if (pr.refUpdates[0].status != "ok") {
+            throw Exception("status should be ok")
+        }
+        if (pr.refUpdates[0].refName != "refs/heads/main") {
+            throw Exception("ref name should be refs/heads/main")
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportParseGitPushResponseFailed(): Unit {
+    let transport = GitTcpTransport()
+    var data = ArrayList<Byte>()
+    var ngBytes = ArrayList<Byte>()
+    ngBytes.add(UInt8(1))
+    for (b in "ng refs/heads/feature some error".toArray()) {
+        ngBytes.add(b)
+    }
+    ngBytes.add(UInt8(10))
+    let encoded = PacketLine.encode(ngBytes.toArray())
+    for (b in encoded) {
+        data.add(b)
+    }
+    for (b in PacketLine.flush()) {
+        data.add(b)
+    }
+    let result = transport.parseGitPushResponse(data.toArray())
+    if (result.isNone()) {
+        throw Exception("should parse push response with failure")
+    }
+    if (let Some(pr) <- result) {
+        if (pr.refUpdates.size != 1) {
+            throw Exception("should have 1 ref update")
+        }
+        if (pr.refUpdates[0].status != "failed") {
+            throw Exception("status should be failed")
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportParseGitPushResponseUnpackError(): Unit {
+    let transport = GitTcpTransport()
+    var data = ArrayList<Byte>()
+    var errBytes = ArrayList<Byte>()
+    errBytes.add(UInt8(1))
+    for (b in "unpack error: corrupt pack".toArray()) {
+        errBytes.add(b)
+    }
+    errBytes.add(UInt8(10))
+    let encoded = PacketLine.encode(errBytes.toArray())
+    for (b in encoded) {
+        data.add(b)
+    }
+    for (b in PacketLine.flush()) {
+        data.add(b)
+    }
+    let result = transport.parseGitPushResponse(data.toArray())
+    if (result.isNone()) {
+        throw Exception("should parse push response with unpack error")
+    }
+    if (let Some(pr) <- result) {
+        if (pr.errorMessage.isNone()) {
+            throw Exception("should have error message for unpack failure")
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportParseGitPushResponseSideBandError(): Unit {
+    let transport = GitTcpTransport()
+    var data = ArrayList<Byte>()
+    var errBytes = ArrayList<Byte>()
+    errBytes.add(UInt8(3))
+    for (b in "fatal: remote error".toArray()) {
+        errBytes.add(b)
+    }
+    errBytes.add(UInt8(10))
+    let encoded = PacketLine.encode(errBytes.toArray())
+    for (b in encoded) {
+        data.add(b)
+    }
+    for (b in PacketLine.flush()) {
+        data.add(b)
+    }
+    let result = transport.parseGitPushResponse(data.toArray())
+    if (result.isNone()) {
+        throw Exception("should parse push response with side-band error")
+    }
+    if (let Some(pr) <- result) {
+        if (pr.errorMessage.isNone()) {
+            throw Exception("should have error message for side-band channel 3")
+        }
+        if (!pr.errorMessage.getOrThrow().contains("fatal")) {
+            throw Exception("error message should contain fatal")
+        }
+    }
+}
+
+@Test
+func testGitTcpTransportFindNullByte(): Unit {
+    let transport = GitTcpTransport()
+    let s1 = "abc" + String.fromUtf8([UInt8(0)]) + "def"
+    let idx1 = transport.findNullByteGit(s1)
+    if (idx1 != 3) {
+        throw Exception("null byte should be at position 3, got: " + idx1.toString())
+    }
+    let s2 = "no null byte"
+    let idx2 = transport.findNullByteGit(s2)
+    if (idx2 != -1) {
+        throw Exception("should return -1 when no null byte, got: " + idx2.toString())
+    }
+}
+
+// ============================================================
+// FileTransport 测试 — 对齐 T016 file:// 协议传输
+// ============================================================
+
+@Test
+func testFileTransportConstruct(): Unit {
+    let transport = FileTransport()
+    if (transport.repoPath != "") {
+        throw Exception("repoPath should be empty on construction")
+    }
+    if (transport.lastRefs.size != 0) {
+        throw Exception("lastRefs should be empty on construction")
+    }
+    if (transport.lastCaps.size != 0) {
+        throw Exception("lastCaps should be empty on construction")
+    }
+}
+
+@Test
+func testFileTransportRepoPathField(): Unit {
+    let transport = FileTransport()
+    if (transport.repoPath != "") {
+        throw Exception("repoPath should default to empty string")
+    }
+}
+
+@Test
+func testFileTransportLastRefsField(): Unit {
+    let transport = FileTransport()
+    if (transport.lastRefs.size != 0) {
+        throw Exception("lastRefs should be empty ArrayList")
+    }
+}
+
+@Test
+func testFileTransportLastCapsField(): Unit {
+    let transport = FileTransport()
+    if (transport.lastCaps.size != 0) {
+        throw Exception("lastCaps should be empty ArrayList")
+    }
+}
+
+@Test
+func testFileTransportHandshakeEmptyPath(): Unit {
+    let transport = FileTransport()
+    let url = Url(Scheme.File, None, None, None, "")
+    let result = transport.handshake(url, Service.gitUploadPack())
+    if (!result.isNone()) {
+        throw Exception("handshake with empty path should return None")
+    }
+}
+
+@Test
+func testFileTransportFetchReturnsNone(): Unit {
+    let transport = FileTransport()
+    let wants = ArrayList<ObjectId>()
+    let haves = ArrayList<ObjectId>()
+    let result = transport.fetch(wants, haves)
+    if (!result.isNone()) {
+        throw Exception("FileTransport.fetch should return None (not implemented)")
+    }
+}
+
+@Test
+func testFileTransportPushReturnsNone(): Unit {
+    let transport = FileTransport()
+    let refUpdates = ArrayList<RefUpdateCommand>()
+    let packData: Array<Byte> = []
+    let result = transport.push(refUpdates, packData)
+    if (!result.isNone()) {
+        throw Exception("FileTransport.push should return None (not implemented)")
     }
 }

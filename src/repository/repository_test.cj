@@ -21,6 +21,8 @@ import gitoxide.gix_submodule.*
 import gitoxide.gix_credentials.*
 import gitoxide.gix_archive.*
 import gitoxide.gix_dir.*
+import gitoxide.gix_url.*
+import gitoxide.gix_transport.*
 
 // ============================================================
 // StatusQuery 测试 — 对齐 gitoxide-core/src/repository/status.rs
@@ -560,5 +562,194 @@ func testRefMappingWithOid(): Unit {
     }
     if (mapping.status != "[up-to-date]") {
         throw Exception("status should be [up-to-date]")
+    }
+}
+
+// ============================================================
+// Push/Fetch/Clone 路由逻辑测试 — 对齐 T017
+// ============================================================
+
+@Test
+func testPushQueryResolveRemoteUrlGit(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = PushQuery(repo)
+    let url = query.resolveRemoteUrl("git://github.com/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("git:// URL should be resolved directly")
+    }
+    if (let Some(u) <- url) {
+        if (u != "git://github.com/user/repo.git") {
+            throw Exception("git:// URL should be returned as-is, got: " + u)
+        }
+    }
+}
+
+@Test
+func testPushQueryResolveRemoteUrlSsh(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = PushQuery(repo)
+    let url = query.resolveRemoteUrl("ssh://git@github.com/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("ssh:// URL should be resolved directly")
+    }
+}
+
+@Test
+func testPushQueryResolveRemoteUrlScpStyle(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = PushQuery(repo)
+    let url = query.resolveRemoteUrl("git@github.com:user/repo.git")
+    if (url.isNone()) {
+        throw Exception("SCP-style URL should be resolved directly")
+    }
+}
+
+@Test
+func testPushQueryResolveRemoteUrlFile(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = PushQuery(repo)
+    let url = query.resolveRemoteUrl("file:///tmp/repo.git")
+    if (url.isNone()) {
+        throw Exception("file:// URL should be resolved directly")
+    }
+}
+
+@Test
+func testPushQueryResolveRemoteUrlHttps(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = PushQuery(repo)
+    let url = query.resolveRemoteUrl("https://github.com/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("https:// URL should be resolved directly")
+    }
+}
+
+@Test
+func testPushQueryResolveRemoteUrlHttp(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = PushQuery(repo)
+    let url = query.resolveRemoteUrl("http://github.com/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("http:// URL should be resolved directly")
+    }
+}
+
+@Test
+func testPushQueryResolveRemoteNameNoConfig(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = PushQuery(repo)
+    let url = query.resolveRemoteUrl("origin")
+    if (!url.isNone()) {
+        throw Exception("remote name without config should return None")
+    }
+}
+
+@Test
+func testFetchQueryGetRemoteUrlNoConfig(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = FetchQuery(repo)
+    let url = query.getRemoteUrl("origin")
+    if (!url.isNone()) {
+        throw Exception("remote name without config should return None for fetch")
+    }
+}
+
+@Test
+func testRemoteQueryCreateTransportGit(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = Url(Scheme.Git, None, Some("github.com"), None, "/user/repo.git")
+    let transport = query.createTransport(url, "git://github.com/user/repo.git")
+    if (transport.isNone()) {
+        throw Exception("should create GitTcpTransport for git:// URL")
+    }
+}
+
+@Test
+func testRemoteQueryCreateTransportFile(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = Url(Scheme.File, None, None, None, "/tmp/repo.git")
+    let transport = query.createTransport(url, "file:///tmp/repo.git")
+    if (transport.isNone()) {
+        throw Exception("should create FileTransport for file:// URL")
+    }
+}
+
+@Test
+func testRemoteQueryCreateTransportHttp(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = Url(Scheme.Http, None, Some("github.com"), None, "/user/repo.git")
+    let transport = query.createTransport(url, "http://github.com/user/repo.git")
+    if (transport.isNone()) {
+        throw Exception("should create HttpTransport for http:// URL")
+    }
+}
+
+@Test
+func testRemoteQueryCreateTransportHttps(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = Url(Scheme.Https, None, Some("github.com"), None, "/user/repo.git")
+    let transport = query.createTransport(url, "https://github.com/user/repo.git")
+    if (transport.isNone()) {
+        throw Exception("should create TlsHttpTransport for https:// URL")
+    }
+}
+
+@Test
+func testRemoteQueryCreateTransportSsh(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = Url(Scheme.Ssh, Some("git"), Some("github.com"), None, "/user/repo.git")
+    let transport = query.createTransport(url, "ssh://git@github.com/user/repo.git")
+    if (!transport.isNone()) {
+        throw Exception("should return None for ssh:// (no native transport)")
+    }
+}
+
+@Test
+func testPushRouteResolveUrlGit(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("git://github.com/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("git:// URL should be resolved")
+    }
+    if (let Some(u) <- url) {
+        if (u != "git://github.com/user/repo.git") {
+            throw Exception("git:// URL should be returned as-is")
+        }
+    }
+}
+
+@Test
+func testPushRouteResolveUrlFile(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("file:///tmp/repo.git")
+    if (url.isNone()) {
+        throw Exception("file:// URL should be resolved")
+    }
+}
+
+@Test
+func testPushRouteResolveUrlSsh(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("ssh://git@github.com/user/repo.git")
+    if (url.isNone()) {
+        throw Exception("ssh:// URL should be resolved")
+    }
+}
+
+@Test
+func testRemoteQueryResolveUrlScpStyle(): Unit {
+    let repo = Repository("/tmp/test", None, HashKind.Sha1)
+    let query = RemoteQuery(repo)
+    let url = query.resolveRemoteUrl("git@github.com:user/repo.git")
+    if (url.isNone()) {
+        throw Exception("SCP-style URL should be resolved")
     }
 }

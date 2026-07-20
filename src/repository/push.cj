@@ -67,20 +67,34 @@ public class PushQuery {
             if (urlStr.startsWith("ssh://") || urlStr.startsWith("git@")) {
                 return pushViaGitCommand(remoteName, refSpecs, repo.gitDir)
             }
+            if (urlStr.startsWith("file://")) {
+                return pushViaGitCommand(remoteName, refSpecs, repo.gitDir)
+            }
             let url = Url.parse(urlStr)
             if (let Some(parsedUrl) <- url) {
                 let service = Service.gitReceivePack()
                 let authOpt = loadCredentialsForUrl(urlStr)
-
+                var transport: ?ClientTransport = None
                 if (urlStr.startsWith("https://")) {
-                    var tlsTransport = TlsHttpTransport()
+                    var t = TlsHttpTransport()
                     if (let Some(auth) <- authOpt) {
-                        tlsTransport.authHeader = Some("Basic " + auth)
+                        t.authHeader = Some("Basic " + auth)
                     }
+                    transport = Some(t)
+                } else if (urlStr.startsWith("http://")) {
+                    var t = HttpTransport()
+                    if (let Some(auth) <- authOpt) {
+                        t.authHeader = Some("Basic " + auth)
+                    }
+                    transport = Some(t)
+                } else if (urlStr.startsWith("git://")) {
+                    transport = Some(GitTcpTransport())
+                }
 
+                if (let Some(t) <- transport) {
                     var handshakeResult: ?HandshakeResult = None
                     try {
-                        handshakeResult = tlsTransport.handshake(parsedUrl, service)
+                        handshakeResult = t.handshake(parsedUrl, service)
                     } catch (_: Exception) {
                         return None
                     }
@@ -108,50 +122,12 @@ public class PushQuery {
                             return None
                         }
 
-                        tlsTransport.push(pushCommands, packData)
+                        t.push(pushCommands, packData)
                     } else {
                         None
                     }
                 } else {
-                    var transport = HttpTransport()
-                    if (let Some(auth) <- authOpt) {
-                        transport.authHeader = Some("Basic " + auth)
-                    }
-
-                    var handshakeResult: ?HandshakeResult = None
-                    try {
-                        handshakeResult = transport.handshake(parsedUrl, service)
-                    } catch (_: Exception) {
-                        return None
-                    }
-
-                    if (let Some(hsResult) <- handshakeResult) {
-                        let pushCommands = resolvePushRefs(refSpecs, hsResult.refs, remoteName)
-                        if (pushCommands.size == 0) {
-                            return None
-                        }
-
-                        let objectsToSend = collectObjectsToSend(pushCommands, hsResult.refs)
-                        var packData: Array<Byte> = []
-                        if (objectsToSend.size > 0) {
-                            let writer = PackWriter(repo.hashKind)
-                            for (objId in objectsToSend) {
-                                let objData = repo.readObject(objId)
-                                if (let Some(data) <- objData) {
-                                    writer.addObject(data.kind, data.data)
-                                }
-                            }
-                            packData = writer.encode()
-                        }
-
-                        if (packData.size == 0 && !hasDeletes(pushCommands)) {
-                            return None
-                        }
-
-                        transport.push(pushCommands, packData)
-                    } else {
-                        None
-                    }
+                    None
                 }
             } else {
                 None
@@ -200,7 +176,7 @@ public class PushQuery {
     // 解析远程仓库名称或 URL
     func resolveRemoteUrl(nameOrUrl: String): ?String {
         if (nameOrUrl.startsWith("http://") || nameOrUrl.startsWith("https://") || nameOrUrl.startsWith("git://") ||
-            nameOrUrl.startsWith("ssh://") || nameOrUrl.startsWith("file://")) {
+            nameOrUrl.startsWith("ssh://") || nameOrUrl.startsWith("file://") || nameOrUrl.startsWith("git@")) {
             return Some(nameOrUrl)
         }
         // 优先使用 pushUrl，回退到 url
