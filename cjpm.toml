@@ -3,7 +3,7 @@
   name = "gitoxide"
   organization = ""
   description = "Native git library for Cangjie, migrated from gitoxide of Rust"
-  version = "0.1.2"
+  version = "0.1.3"
   output-type = "static"
   compile-option = ""
   override-compile-option = ""
